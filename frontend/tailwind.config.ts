@@ -1,0 +1,127 @@
+import type { Config } from "tailwindcss";
+
+const config: Config = {
+  darkMode: ["class"],
+  content: [
+    "./pages/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    "./app/**/*.{ts,tsx}",
+    "./src/**/*.{ts,tsx}",
+  ],
+  prefix: "",
+  theme: {
+    container: {
+      center: true,
+      padding: "2rem",
+      screens: { "2xl": "1400px" },
+    },
+    extend: {
+      colors: {
+        // ── WeatherNow / Stitch design tokens ──────────────────────────────
+        "background":                  "#0b1326",
+        "surface":                     "#0b1326",
+        "surface-dim":                 "#0b1326",
+        "surface-container-lowest":    "#060e20",
+        "surface-container-low":       "#131b2e",
+        "surface-container":           "#171f33",
+        "surface-container-high":      "#222a3d",
+        "surface-container-highest":   "#2d3449",
+        "surface-variant":             "#2d3449",
+        "surface-bright":              "#31394d",
+        "surface-tint":                "#7bd0ff",
+        "on-background":               "#dae2fd",
+        "on-surface":                  "#dae2fd",
+        "on-surface-variant":          "#c6c6cd",
+        "inverse-surface":             "#dae2fd",
+        "inverse-on-surface":          "#283044",
+        "primary":                     "#7bd0ff",
+        "primary-fixed":               "#c4e7ff",
+        "primary-fixed-dim":           "#7bd0ff",
+        "primary-container":           "#001a27",
+        "on-primary":                  "#00354a",
+        "on-primary-container":        "#008abb",
+        "on-primary-fixed":            "#001e2c",
+        "on-primary-fixed-variant":    "#004c69",
+        "inverse-primary":             "#00668a",
+        "secondary":                   "#c4c6d1",
+        "secondary-fixed":             "#e1e2ed",
+        "secondary-fixed-dim":         "#c4c6d1",
+        "secondary-container":         "#444650",
+        "on-secondary":                "#2d3039",
+        "on-secondary-container":      "#b3b4c0",
+        "on-secondary-fixed":          "#191b24",
+        "on-secondary-fixed-variant":  "#444650",
+        "tertiary":                    "#dec29a",
+        "tertiary-fixed":              "#fcdeb5",
+        "tertiary-fixed-dim":          "#dec29a",
+        "tertiary-container":          "#231500",
+        "on-tertiary":                 "#3e2d11",
+        "on-tertiary-container":       "#957d5a",
+        "on-tertiary-fixed":           "#271901",
+        "on-tertiary-fixed-variant":   "#574425",
+        "outline":                     "#909097",
+        "outline-variant":             "#45464d",
+        "error":                       "#ffb4ab",
+        "error-container":             "#93000a",
+        "on-error":                    "#690005",
+        "on-error-container":          "#ffdad6",
+        // ── shadcn/ui CSS variable mappings ─────────────────────────────
+        border:      "hsl(var(--border))",
+        input:       "hsl(var(--input))",
+        ring:        "hsl(var(--ring))",
+        foreground:  "hsl(var(--foreground))",
+        muted: {
+          DEFAULT:    "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT:    "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        popover: {
+          DEFAULT:    "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        card: {
+          DEFAULT:    "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+        destructive: {
+          DEFAULT:    "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+      },
+      borderRadius: {
+        DEFAULT: "0.25rem",
+        lg:      "0.5rem",
+        xl:      "0.75rem",
+        "2xl":   "1rem",
+        "3xl":   "1.5rem",
+        full:    "9999px",
+      },
+      fontFamily: {
+        sans:     ["Inter", "sans-serif"],
+        headline: ["Inter", "sans-serif"],
+        body:     ["Inter", "sans-serif"],
+        label:    ["Inter", "sans-serif"],
+      },
+      keyframes: {
+        "accordion-down": {
+          from: { height: "0" },
+          to:   { height: "var(--radix-accordion-content-height)" },
+        },
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to:   { height: "0" },
+        },
+      },
+      animation: {
+        "accordion-down": "accordion-down 0.2s ease-out",
+        "accordion-up":   "accordion-up 0.2s ease-out",
+      },
+    },
+  },
+  plugins: [require("tailwindcss-animate")],
+};
+
+export default config;

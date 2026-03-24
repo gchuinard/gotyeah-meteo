@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* shadcn/ui CSS variables — mapped to WeatherNow dark palette */
+    --background:          222 47% 11%;
+    --foreground:          228 100% 93%;   /* #dae2fd */
+
+    --card:                222 33% 17%;
+    --card-foreground:     228 100% 93%;
+
+    --popover:             222 33% 17%;
+    --popover-foreground:  228 100% 93%;
+
+    --primary:             199 100% 74%;   /* #7bd0ff */
+    --primary-foreground:  205 100% 15%;
+
+    --secondary:           227 10% 80%;    /* #c4c6d1 */
+    --secondary-foreground: 228 10% 20%;
+
+    --muted:               225 28% 17%;
+    --muted-foreground:    225 5% 80%;
+
+    --accent:              225 28% 22%;
+    --accent-foreground:   228 100% 93%;
+
+    --destructive:         4 76% 53%;
+    --destructive-foreground: 228 100% 93%;
+
+    --border:              225 8% 28%;
+    --input:               225 8% 28%;
+    --ring:                199 100% 74%;
+
+    --radius: 0.5rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: #0b1326;
+    color: #dae2fd;
+    font-family: 'Inter', sans-serif;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer utilities {
+  /* Hide scrollbar but keep scroll functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
