@@ -4,8 +4,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: weathernow-front
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://weathernow-api:8000
     depends_on:
