@@ -23,13 +23,20 @@ export interface CurrentWeather {
   temp_min: number;
   temp_max: number;
   humidity: number;
-  wind_speed: number; // m/s
+  pressure: number;
+  wind_speed: number;
   wind_deg: number;
-  visibility: number; // metres
+  visibility: number;
   weather: WeatherCondition[];
   dt: number;
   sunrise: number;
   sunset: number;
+}
+
+export interface HourlyItem {
+  dt: number;
+  temp: number;
+  weather: WeatherCondition[];
 }
 
 export interface ForecastItem {
@@ -40,11 +47,12 @@ export interface ForecastItem {
   humidity: number;
   weather: WeatherCondition[];
   wind_speed: number;
-  pop: number; // probability of precipitation (0–1)
+  pop: number;
 }
 
 export interface Forecast {
   city: string;
   country: string;
   items: ForecastItem[];
+  hourly: HourlyItem[];
 }

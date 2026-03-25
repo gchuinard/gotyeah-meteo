@@ -44,5 +44,30 @@ export function useWeather() {
     }
   }, []);
 
-  return { ...state, search };
+  const searchByCoords = useCallback(async (lat: number, lon: number, name?: string) => {
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+
+    try {
+      const [current, forecast] = await Promise.all([
+        fetchCurrentWeather(lat, lon),
+        fetchForecast(lat, lon),
+      ]);
+
+      setState({
+        location: { lat, lon, name: name ?? current.city, country: current.country },
+        current,
+        forecast,
+        loading: false,
+        error: null,
+      });
+    } catch (err) {
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        error: err instanceof Error ? err.message : "Unknown error",
+      }));
+    }
+  }, []);
+
+  return { ...state, search, searchByCoords };
 }

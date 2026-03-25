@@ -4,6 +4,18 @@
 
 @layer base {
   :root {
+    /* ── WeatherNow theme tokens (RGB triplets for Tailwind opacity support) ── */
+    --wn-primary:       123 208 255;
+    --wn-tertiary:      222 194 154;
+    --wn-bg:            11  19  38;
+    --wn-surface-cl:    6   14  32;
+    --wn-surface-c:     23  31  51;
+    --wn-surface-ch:    34  42  61;
+    --wn-surface-cgh:   45  52  73;
+    --wn-on-surface:    218 226 253;
+    --wn-on-surface-v:  198 198 205;
+    --wn-on-primary:    0   53  74;
+
     /* shadcn/ui CSS variables — mapped to WeatherNow dark palette */
     --background:          222 47% 11%;
     --foreground:          228 100% 93%;   /* #dae2fd */
@@ -45,13 +57,22 @@
   }
 
   body {
-    background-color: #0b1326;
+    background-color: rgb(var(--wn-bg));
     color: #dae2fd;
     font-family: 'Inter', sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;
   }
 }
+
+/* ── Light theme border / bg overrides ──────────────────────────────── */
+[data-light] .border-white\/5  { border-color: rgb(0 0 0 / 0.07) !important; }
+[data-light] .border-white\/10 { border-color: rgb(0 0 0 / 0.10) !important; }
+[data-light] .border-white\/20 { border-color: rgb(0 0 0 / 0.16) !important; }
+[data-light] .bg-white\/5      { background-color: rgb(0 0 0 / 0.04) !important; }
+[data-light] .hover\:bg-white\/5:hover { background-color: rgb(0 0 0 / 0.04) !important; }
+[data-light] .bg-black\/60     { background-color: rgb(0 0 0 / 0.25) !important; }
+[data-light] .text-white       { color: rgb(var(--wn-on-surface)) !important; }
 
 @layer utilities {
   /* Hide scrollbar but keep scroll functionality */

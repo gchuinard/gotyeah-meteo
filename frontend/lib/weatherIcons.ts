@@ -26,3 +26,49 @@ const OWM_ICON_MAP: Record<string, string> = {
 export function getWeatherIcon(owmIconCode: string): string {
   return OWM_ICON_MAP[owmIconCode] ?? "partly_cloudy_day";
 }
+
+/**
+ * Returns a hex color for a given OWM icon code.
+ * Day/night variants share the same hue; night is slightly cooler/dimmer.
+ */
+const WEATHER_COLORS: Record<string, string> = {
+  // ☀️ Clear
+  "01d": "#FFA726", // warm orange-yellow
+  "01n": "#7986CB", // soft indigo night
+
+  // 🌤 Few clouds
+  "02d": "#FFB74D",
+  "02n": "#5C6BC0",
+
+  // ⛅ Scattered clouds
+  "03d": "#90A4AE",
+  "03n": "#546E7A",
+
+  // ☁️ Broken / overcast
+  "04d": "#78909C",
+  "04n": "#455A64",
+
+  // 🌧 Shower rain
+  "09d": "#4FC3F7",
+  "09n": "#0288D1",
+
+  // 🌦 Rain
+  "10d": "#42A5F5",
+  "10n": "#1565C0",
+
+  // ⛈ Thunderstorm
+  "11d": "#7E57C2",
+  "11n": "#4527A0",
+
+  // ❄️ Snow
+  "13d": "#B3E5FC",
+  "13n": "#80DEEA",
+
+  // 🌫 Mist / fog
+  "50d": "#B0BEC5",
+  "50n": "#78909C",
+};
+
+export function getWeatherColor(owmIconCode: string): string {
+  return WEATHER_COLORS[owmIconCode] ?? "#90A4AE";
+}

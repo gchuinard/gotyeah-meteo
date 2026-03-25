@@ -1,9 +1,4 @@
-"""
-Pydantic models for weather data.
-
-These will be used as response models once the OWM service is wired up in Sprint 1.
-"""
-
+from typing import Optional, List
 from pydantic import BaseModel
 
 
@@ -12,7 +7,7 @@ class GeoLocation(BaseModel):
     lat: float
     lon: float
     country: str
-    state: str | None = None
+    state: Optional[str] = None
 
 
 class WeatherCondition(BaseModel):
@@ -32,13 +27,20 @@ class CurrentWeather(BaseModel):
     temp_min: float
     temp_max: float
     humidity: int
+    pressure: int
     wind_speed: float
     wind_deg: int
     visibility: int
-    weather: list[WeatherCondition]
+    weather: List[WeatherCondition]
     dt: int
     sunrise: int
     sunset: int
+
+
+class HourlyItem(BaseModel):
+    dt: int
+    temp: float
+    weather: List[WeatherCondition]
 
 
 class ForecastItem(BaseModel):
@@ -47,12 +49,13 @@ class ForecastItem(BaseModel):
     temp_min: float
     temp_max: float
     humidity: int
-    weather: list[WeatherCondition]
+    weather: List[WeatherCondition]
     wind_speed: float
-    pop: float  # probability of precipitation (0–1)
+    pop: float
 
 
 class Forecast(BaseModel):
     city: str
     country: str
-    items: list[ForecastItem]
+    items: List[ForecastItem]
+    hourly: List[HourlyItem]
