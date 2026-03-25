@@ -1,3 +1,11 @@
+"""
+Module : weather.py
+Rôle   : Endpoints météo — géocodage, météo courante et prévisions sur 7 jours / 24h.
+
+Dépendances notables :
+  - owm_service : client HTTP vers l'API OpenWeatherMap (mise en cache incluse)
+"""
+
 import logging
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -21,6 +29,19 @@ async def geocode(
     city: str = Query(...),
     limit: int = Query(5, ge=1, le=10),
 ):
+    """
+    Convertit un nom de ville en liste de coordonnées GPS via OWM Geocoding API.
+
+    Args:
+        city (str): Nom de la ville à rechercher.
+        limit (int): Nombre maximum de résultats retournés (1-10).
+
+    Returns:
+        list[GeoLocation]: Résultats de géocodage avec nom, pays, état et coordonnées.
+
+    Raises:
+        HTTPException: 502 si l'API OWM est injoignable ou renvoie une erreur.
+    """
     key_preview = settings.owm_api_key[:6] + "..." if settings.owm_api_key else "NOT SET"
     log.debug(f"[geocode] city={city!r}  api_key={key_preview}")
     try:
@@ -46,10 +67,23 @@ async def current_weather(
     lat: float = Query(..., ge=-90, le=90),
     lon: float = Query(..., ge=-180, le=180),
 ):
+    """
+    Retourne la météo courante pour des coordonnées GPS données.
+
+    Args:
+        lat (float): Latitude entre -90 et 90.
+        lon (float): Longitude entre -180 et 180.
+
+    Returns:
+        CurrentWeather: Température, conditions, vent, humidité, pression, etc.
+
+    Raises:
+        HTTPException: 502 si l'API OWM est injoignable ou renvoie une erreur.
+    """
     log.debug(f"[current] lat={lat}  lon={lon}")
     try:
         raw = await owm_service.current_weather(lat, lon)
-        log.debug(f"[current] ✅ {raw.get('name')}, {raw.get('sys', {}).get('country')}  temp={raw.get('main', {}).get('temp')}°C  condition={raw.get('weather', [{}])[0].get('description')}")
+        log.debug(f"[current] ✅ {raw.get('name')}, {raw.get('sys', {}).get('country')}  temp={raw.get('main', {}).get('temp')}°C")
     except Exception as e:
         log.error(f"[current] ❌ OWM error: {e}")
         raise HTTPException(status_code=502, detail=str(e))
@@ -80,6 +114,19 @@ async def forecast(
     lat: float = Query(..., ge=-90, le=90),
     lon: float = Query(..., ge=-180, le=180),
 ):
+    """
+    Retourne les prévisions sur 7 jours (aggrégation par jour) et 24h (créneaux 3h).
+
+    Args:
+        lat (float): Latitude entre -90 et 90.
+        lon (float): Longitude entre -180 et 180.
+
+    Returns:
+        Forecast: Prévisions journalières et horaires.
+
+    Raises:
+        HTTPException: 502 si l'API OWM est injoignable ou renvoie une erreur.
+    """
     log.debug(f"[forecast] lat={lat}  lon={lon}")
     try:
         raw = await owm_service.forecast(lat, lon)
@@ -90,7 +137,7 @@ async def forecast(
 
     items_raw = raw["list"]
 
-    # Hourly: first 8 slots (3h intervals = 24h)
+    # Horaire : les 8 premiers créneaux couvrent les 24h suivantes (intervalles de 3h)
     hourly = [
         HourlyItem(
             dt=item["dt"],
@@ -100,7 +147,7 @@ async def forecast(
         for item in items_raw[:8]
     ]
 
-    # Daily: aggregate by UTC date
+    # Journalier : agrégation par date UTC
     day_groups: dict = defaultdict(list)
     for item in items_raw:
         day = datetime.fromtimestamp(item["dt"], tz=timezone.utc).date()
@@ -109,7 +156,7 @@ async def forecast(
     daily: list[ForecastItem] = []
     for day in sorted(day_groups.keys()):
         group = day_groups[day]
-        # Pick the item closest to noon for the representative condition
+        # Créneau le plus proche de midi = représentatif de la météo de la journée
         noon = min(
             group,
             key=lambda x: abs(datetime.fromtimestamp(x["dt"], tz=timezone.utc).hour - 12),

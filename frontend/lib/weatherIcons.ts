@@ -1,7 +1,12 @@
 /**
- * Maps OpenWeatherMap icon codes to Material Symbols Outlined icon names.
- * OWM icon list: https://openweathermap.org/weather-conditions
+ * @file weatherIcons.ts
+ * @description Correspondance entre les codes icônes OWM et les icônes Material Symbols + couleurs associées.
+ *
+ * @dependencies
+ * - Aucune dépendance externe — tables de correspondance statiques
  */
+
+/** Correspondance code OWM → nom d'icône Material Symbols Outlined. */
 const OWM_ICON_MAP: Record<string, string> = {
   "01d": "sunny",
   "01n": "nights_stay",
@@ -23,52 +28,64 @@ const OWM_ICON_MAP: Record<string, string> = {
   "50n": "foggy",
 };
 
+/**
+ * Retourne le nom de l'icône Material Symbols correspondant à un code OWM.
+ *
+ * @param owmIconCode - Code icône OWM (ex. "01d", "10n").
+ * @returns Nom de l'icône Material Symbols, "partly_cloudy_day" par défaut.
+ */
 export function getWeatherIcon(owmIconCode: string): string {
   return OWM_ICON_MAP[owmIconCode] ?? "partly_cloudy_day";
 }
 
 /**
- * Returns a hex color for a given OWM icon code.
- * Day/night variants share the same hue; night is slightly cooler/dimmer.
+ * Correspondance code OWM → couleur hex.
+ * Les variantes jour/nuit partagent la même teinte ; la nuit est plus froide/atténuée.
  */
 const WEATHER_COLORS: Record<string, string> = {
-  // ☀️ Clear
-  "01d": "#FFA726", // warm orange-yellow
-  "01n": "#7986CB", // soft indigo night
+  // ☀️ Ciel dégagé
+  "01d": "#FFA726", // orange-jaune chaud
+  "01n": "#7986CB", // indigo doux nuit
 
-  // 🌤 Few clouds
+  // 🌤 Quelques nuages
   "02d": "#FFB74D",
   "02n": "#5C6BC0",
 
-  // ⛅ Scattered clouds
+  // ⛅ Nuages épars
   "03d": "#90A4AE",
   "03n": "#546E7A",
 
-  // ☁️ Broken / overcast
+  // ☁️ Couvert
   "04d": "#78909C",
   "04n": "#455A64",
 
-  // 🌧 Shower rain
+  // 🌧 Averses
   "09d": "#4FC3F7",
   "09n": "#0288D1",
 
-  // 🌦 Rain
+  // 🌦 Pluie
   "10d": "#42A5F5",
   "10n": "#1565C0",
 
-  // ⛈ Thunderstorm
+  // ⛈ Orage
   "11d": "#7E57C2",
   "11n": "#4527A0",
 
-  // ❄️ Snow
+  // ❄️ Neige
   "13d": "#B3E5FC",
   "13n": "#80DEEA",
 
-  // 🌫 Mist / fog
+  // 🌫 Brouillard / brume
   "50d": "#B0BEC5",
   "50n": "#78909C",
 };
 
+/**
+ * Retourne la couleur hex associée aux conditions météo d'un code OWM.
+ *
+ * @param owmIconCode - Code icône OWM (ex. "01d", "11n").
+ * @returns Couleur hexadécimale, gris neutre par défaut.
+ */
 export function getWeatherColor(owmIconCode: string): string {
   return WEATHER_COLORS[owmIconCode] ?? "#90A4AE";
 }

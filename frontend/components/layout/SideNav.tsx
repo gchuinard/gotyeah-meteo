@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 interface Theme {
   id:           string;
@@ -76,6 +77,8 @@ import type {
 interface Props {
   units: Units;
   onUnitsChange: (u: Units) => void;
+  onOpenLogin?: () => void;
+  onOpenRegister?: () => void;
 }
 
 function UnitGroup<T extends string>({
@@ -109,10 +112,11 @@ function UnitGroup<T extends string>({
   );
 }
 
-export function SideNav({ units, onUnitsChange }: Props) {
+export function SideNav({ units, onUnitsChange, onOpenLogin, onOpenRegister }: Props) {
   const set = <K extends keyof Units>(key: K, val: Units[K]) =>
     onUnitsChange({ ...units, [key]: val });
 
+  const { user, logout } = useAuth();
   const [profileOpen, setProfileOpen] = useState(false);
   const [pseudo, setPseudo]           = useState("");
   const [savedPseudo, setSavedPseudo] = useState("");
@@ -121,9 +125,21 @@ export function SideNav({ units, onUnitsChange }: Props) {
   useEffect(() => {
     const t = THEMES.find(t => t.id === themeId) ?? THEMES[0];
     const root = document.documentElement;
-    root.style.setProperty("--wn-primary",  t.primary);
-    root.style.setProperty("--wn-tertiary", t.tertiary);
-    root.style.setProperty("--wn-bg",       t.bg);
+    root.style.setProperty("--wn-primary",      t.primary);
+    root.style.setProperty("--wn-tertiary",     t.tertiary);
+    root.style.setProperty("--wn-bg",           t.bg);
+    root.style.setProperty("--wn-surface-cl",   t.surfaceCl);
+    root.style.setProperty("--wn-surface-c",    t.surfaceC);
+    root.style.setProperty("--wn-surface-ch",   t.surfaceCh);
+    root.style.setProperty("--wn-surface-cgh",  t.surfaceCgh);
+    root.style.setProperty("--wn-on-surface",   t.onSurface);
+    root.style.setProperty("--wn-on-surface-v", t.onSurfaceV);
+    root.style.setProperty("--wn-on-primary",   t.onPrimary);
+    if (t.light) {
+      root.setAttribute("data-light", "true");
+    } else {
+      root.removeAttribute("data-light");
+    }
   }, [themeId]);
 
   return (
@@ -139,17 +155,41 @@ export function SideNav({ units, onUnitsChange }: Props) {
 
         {/* Nav */}
         <nav className="px-4 flex-shrink-0">
-          <button
-            onClick={() => { setPseudo(savedPseudo); setProfileOpen(true); }}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all duration-300 text-on-surface-variant hover:text-on-surface hover:bg-white/5"
-          >
-            <span className="material-symbols-outlined">person</span>
-            {savedPseudo || "Profil"}
-          </button>
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all duration-300 text-on-surface-variant hover:text-error hover:bg-error/5">
-            <span className="material-symbols-outlined">logout</span>
-            Déconnexion
-          </button>
+          {user ? (
+            <>
+              <button
+                onClick={() => { setPseudo(savedPseudo); setProfileOpen(true); }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all duration-300 text-on-surface-variant hover:text-on-surface hover:bg-white/5"
+              >
+                <span className="material-symbols-outlined">person</span>
+                {savedPseudo || "Profil"}
+              </button>
+              <button
+                onClick={() => logout()}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all duration-300 text-on-surface-variant hover:text-red-400 hover:bg-red-400/5"
+              >
+                <span className="material-symbols-outlined">logout</span>
+                Déconnexion
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={onOpenLogin}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all duration-300 text-on-surface-variant hover:text-on-surface hover:bg-white/5"
+              >
+                <span className="material-symbols-outlined">login</span>
+                Connexion
+              </button>
+              <button
+                onClick={onOpenRegister}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all duration-300 text-on-surface-variant hover:text-on-surface hover:bg-white/5"
+              >
+                <span className="material-symbols-outlined">person_add</span>
+                Créer un compte
+              </button>
+            </>
+          )}
         </nav>
 
         {/* Divider */}
@@ -276,12 +316,15 @@ export function SideNav({ units, onUnitsChange }: Props) {
       {profileOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-sm bg-surface-container-lowest border border-white/10 rounded-3xl p-8 shadow-2xl">
-            <h2 className="text-xl font-bold mb-6">Profil</h2>
+            <h2 className="text-xl font-bold mb-1">Profil</h2>
+            {user && <p className="text-xs text-on-surface-variant mb-6">{user.email}</p>}
+            {!user && <div className="mb-6" />}
 
             {/* Theme picker */}
-            <p className="text-xs text-on-surface-variant font-semibold uppercase tracking-wider mb-3">Ambiance</p>
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              {THEMES.map((t) => {
+            <p className="text-xs text-on-surface-variant font-semibold uppercase tracking-wider mb-1">Ambiance</p>
+            <p className="text-[10px] text-on-surface-variant mb-3">Mode sombre</p>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              {THEMES.filter(t => !t.light).map((t) => {
                 const isActive = t.id === themeId;
                 return (
                   <button
@@ -289,25 +332,41 @@ export function SideNav({ units, onUnitsChange }: Props) {
                     onClick={() => setThemeId(t.id)}
                     className={[
                       "relative flex flex-col items-start gap-2 p-3 rounded-2xl border transition-all",
-                      isActive
-                        ? "border-white/30 bg-white/5"
-                        : "border-white/5 hover:bg-white/5",
+                      isActive ? "border-white/30 bg-white/5" : "border-white/5 hover:bg-white/5",
                     ].join(" ")}
                   >
-                    {/* Color swatches */}
                     <div className="flex gap-1.5">
-                      <span
-                        className="w-6 h-6 rounded-full"
-                        style={{ background: `rgb(${t.primary})` }}
-                      />
-                      <span
-                        className="w-6 h-6 rounded-full"
-                        style={{ background: `rgb(${t.tertiary})` }}
-                      />
-                      <span
-                        className="w-6 h-6 rounded-full border border-white/10"
-                        style={{ background: `rgb(${t.bg})` }}
-                      />
+                      <span className="w-5 h-5 rounded-full" style={{ background: `rgb(${t.bg})` }} />
+                      <span className="w-5 h-5 rounded-full" style={{ background: `rgb(${t.primary})` }} />
+                      <span className="w-5 h-5 rounded-full" style={{ background: `rgb(${t.tertiary})` }} />
+                    </div>
+                    <span className="text-xs font-semibold text-on-surface">{t.name}</span>
+                    {isActive && (
+                      <span className="absolute top-2 right-2 material-symbols-outlined text-sm" style={{ color: `rgb(${t.primary})`, fontVariationSettings: "'FILL' 1" }}>
+                        check_circle
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[10px] text-on-surface-variant mb-3">Mode clair</p>
+            <div className="grid grid-cols-2 gap-2 mb-6">
+              {THEMES.filter(t => t.light).map((t) => {
+                const isActive = t.id === themeId;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setThemeId(t.id)}
+                    className={[
+                      "relative flex flex-col items-start gap-2 p-3 rounded-2xl border transition-all",
+                      isActive ? "border-white/30 bg-white/5" : "border-white/5 hover:bg-white/5",
+                    ].join(" ")}
+                  >
+                    <div className="flex gap-1.5">
+                      <span className="w-5 h-5 rounded-full border border-black/10" style={{ background: `rgb(${t.bg})` }} />
+                      <span className="w-5 h-5 rounded-full" style={{ background: `rgb(${t.primary})` }} />
+                      <span className="w-5 h-5 rounded-full" style={{ background: `rgb(${t.tertiary})` }} />
                     </div>
                     <span className="text-xs font-semibold text-on-surface">{t.name}</span>
                     {isActive && (

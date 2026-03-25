@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { SideNav } from "@/components/layout/SideNav";
 import { TRANSLATIONS, type Lang } from "@/lib/translations";
 import { useWeather } from "@/hooks/useWeather";
 import { fetchCurrentWeather } from "@/lib/api";
 import { getWeatherIcon, getWeatherColor } from "@/lib/weatherIcons";
 import { SearchAutocomplete } from "@/components/weather/SearchAutocomplete";
-import { DEFAULT_UNITS, fmtTemp, fmtTempVal, fmtWind, fmtPressure, fmtVis, fmtDate, type Units } from "@/lib/units";
+import { DEFAULT_UNITS, fmtTempVal, fmtWind, fmtPressure, fmtDate, type Units } from "@/lib/units";
 import type { CurrentWeather } from "@/types/weather";
+import { useAuth } from "@/context/AuthContext";
+import { apiGetFavorites, apiAddFavorite, apiDeleteFavorite } from "@/lib/api/user";
 
 const LOCALE_MAP: Record<Lang, string> = {
   EN: "en-US", FR: "fr-FR", ES: "es-ES", DE: "de-DE", JA: "ja-JP",
@@ -16,10 +18,19 @@ const LOCALE_MAP: Record<Lang, string> = {
 
 const LANGUAGES: Lang[] = ["EN", "FR", "ES", "DE", "JA"];
 
-const DEFAULT_FAVORITES = [
+const DEFAULT_FAVORITES: FavoriteItem[] = [
   { city: "London",   lat: 51.5074, lon: -0.1278,  bgColor: "bg-primary/10",   iconColor: "text-primary"    },
   { city: "New York", lat: 40.7128, lon: -74.0060, bgColor: "bg-tertiary/10", iconColor: "text-tertiary"  },
 ];
+
+interface FavoriteItem {
+  id?: string;
+  city: string;
+  lat: number;
+  lon: number;
+  bgColor: string;
+  iconColor: string;
+}
 
 const FAV_COLORS = [
   { bgColor: "bg-primary/10",    iconColor: "text-primary"    },
@@ -50,16 +61,69 @@ function formatHour(dt: number, fmt: "24h" | "12h"): string {
 }
 
 export default function HomePage() {
+  const { user, accessToken, getToken, login, register } = useAuth();
   const [lang, setLang]           = useState<Lang>("FR");
   const [langOpen, setLangOpen]   = useState(false);
   const [locStatus, setLocStatus] = useState<"idle" | "loading" | "denied" | "ok">("idle");
   const [locCity, setLocCity]     = useState<string | null>(null);
-  const [favorites, setFavorites] = useState(DEFAULT_FAVORITES);
+  const [favorites, setFavorites] = useState<FavoriteItem[]>(DEFAULT_FAVORITES);
   const [favData, setFavData]     = useState<(CurrentWeather | null)[]>([null, null]);
   const [units, setUnits]         = useState<Units>(DEFAULT_UNITS);
 
+  // Auth modals
+  const [authModal, setAuthModal] = useState<"login" | "register" | null>(null);
+  const [authEmail, setAuthEmail]     = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authConfirm, setAuthConfirm]   = useState("");
+  const [authError, setAuthError]       = useState<string | null>(null);
+  const [authLoading, setAuthLoading]   = useState(false);
+
+  function openLogin()    { setAuthModal("login");    setAuthEmail(""); setAuthPassword(""); setAuthConfirm(""); setAuthError(null); }
+  function openRegister() { setAuthModal("register"); setAuthEmail(""); setAuthPassword(""); setAuthConfirm(""); setAuthError(null); }
+  function closeAuth()    { setAuthModal(null); }
+
+  async function handleAuthSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setAuthError(null);
+    if (authModal === "register") {
+      if (authPassword !== authConfirm) { setAuthError("Les mots de passe ne correspondent pas"); return; }
+      if (authPassword.length < 8)      { setAuthError("Minimum 8 caractères"); return; }
+    }
+    setAuthLoading(true);
+    try {
+      if (authModal === "login")    await login(authEmail, authPassword);
+      if (authModal === "register") await register(authEmail, authPassword);
+      closeAuth();
+    } catch (err: unknown) {
+      setAuthError(err instanceof Error ? err.message : "Erreur");
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
   const { current, forecast, loading, error, search, searchByCoords } = useWeather();
   const tr = TRANSLATIONS[lang];
+
+  // Load favorites from API when authenticated
+  useEffect(() => {
+    if (!user || !accessToken) {
+      setFavorites(DEFAULT_FAVORITES);
+      return;
+    }
+    apiGetFavorites(accessToken).then((apiFavs) => {
+      setFavorites(
+        apiFavs.map((f, i) => ({
+          id: f.id,
+          city: f.city_name,
+          lat: f.lat,
+          lon: f.lon,
+          bgColor: FAV_COLORS[i % FAV_COLORS.length].bgColor,
+          iconColor: FAV_COLORS[i % FAV_COLORS.length].iconColor,
+        }))
+      );
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   useEffect(() => {
     Promise.all(
@@ -68,7 +132,9 @@ export default function HomePage() {
   }, [favorites]);
 
   useEffect(() => {
+    console.log("[WeatherNow] Geolocation effect fired");
     if (!navigator.geolocation) {
+      console.log("[WeatherNow] No geolocation — searching Paris");
       search("Paris");
       return;
     }
@@ -76,21 +142,25 @@ export default function HomePage() {
     setLocStatus("loading");
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
+        console.log("[WeatherNow] Geolocation OK:", pos.coords.latitude, pos.coords.longitude);
         try {
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`
           );
           const data = await res.json();
           const city = data.address?.city || data.address?.town || data.address?.village || "Paris";
+          console.log("[WeatherNow] Reverse geocode →", city);
           setLocCity(city);
           setLocStatus("ok");
           search(city);
-        } catch {
+        } catch (err) {
+          console.warn("[WeatherNow] Reverse geocode failed:", err, "— fallback to Paris");
           setLocStatus("idle");
           search("Paris");
         }
       },
-      () => {
+      (err) => {
+        console.warn("[WeatherNow] Geolocation denied/error:", err.message, "— fallback to Paris");
         setLocStatus("denied");
         search("Paris");
       },
@@ -141,7 +211,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-background text-on-surface">
-      <SideNav units={units} onUnitsChange={setUnits} />
+      <SideNav units={units} onUnitsChange={setUnits} onOpenLogin={openLogin} onOpenRegister={openRegister} />
 
       <div className="lg:ml-64 min-h-screen relative overflow-x-hidden">
 
@@ -154,13 +224,6 @@ export default function HomePage() {
           </div>
 
           <div className="flex items-center gap-4 ml-6">
-            <button className="p-2 text-on-surface hover:text-white transition-colors">
-              <span className="material-symbols-outlined">my_location</span>
-            </button>
-            <button className="p-2 text-on-surface hover:text-white transition-colors">
-              <span className="material-symbols-outlined">settings</span>
-            </button>
-
             {/* Language selector */}
             <div className="relative">
               <button
@@ -186,13 +249,11 @@ export default function HomePage() {
               )}
             </div>
 
-            <div className="w-10 h-10 rounded-full bg-slate-700 overflow-hidden">
-              <img
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuAK8bcNCK6Yy8JTYMgYHT9yMn8N63z9SOVM5lZC-8LMzaxD1BNPOIVb-vPiErJ1UNnP7JEGqrE8yKtkiYso3SmBMdAZPGvl2h1nE2suqf62Ip9Z2PHUBkGYohk_dAxdW5Garl65-MFzt0OAecmt_ZQvpBg9-BMn4x3x4dyHskcixWi-p554Wiz8THXnh4c3KYanqpE_Oec2umNYvGrSsgdhmVHF6e2covYUiT_l0ItEvbZ5PsUTpigMi7mWNBLq_V-NCp4gSZAaDlQ"
-                alt="User profile"
-                className="w-full h-full object-cover"
-              />
-            </div>
+            {user && (
+              <div className="w-10 h-10 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-sm font-bold text-primary select-none">
+                {user.email[0].toUpperCase()}
+              </div>
+            )}
           </div>
         </header>
 
@@ -231,16 +292,35 @@ export default function HomePage() {
               {/* Favorite toggle button */}
               {(() => {
                 const isFav = favorites.some(f => f.city === current.city);
+                const handleToggle = async () => {
+                  if (isFav) {
+                    const existing = favorites.find(f => f.city === current.city);
+                    setFavorites(prev => prev.filter(f => f.city !== current.city));
+                    if (user && existing?.id) {
+                      const token = await getToken().catch(() => null);
+                      if (token) apiDeleteFavorite(token, existing.id).catch(() => {});
+                    }
+                  } else {
+                    const colors = FAV_COLORS[favorites.length % FAV_COLORS.length];
+                    if (user) {
+                      const token = await getToken().catch(() => null);
+                      if (token) {
+                        apiAddFavorite(token, { city_name: current.city, lat: current.lat, lon: current.lon })
+                          .then((fav) => {
+                            setFavorites(prev => [...prev, { id: fav.id, city: fav.city_name, lat: fav.lat, lon: fav.lon, ...colors }]);
+                          })
+                          .catch(() => {
+                            setFavorites(prev => [...prev, { city: current.city, lat: current.lat, lon: current.lon, ...colors }]);
+                          });
+                        return;
+                      }
+                    }
+                    setFavorites(prev => [...prev, { city: current.city, lat: current.lat, lon: current.lon, ...colors }]);
+                  }
+                };
                 return (
                   <button
-                    onClick={() => {
-                      if (isFav) {
-                        setFavorites(prev => prev.filter(f => f.city !== current.city));
-                      } else {
-                        const colors = FAV_COLORS[favorites.length % FAV_COLORS.length];
-                        setFavorites(prev => [...prev, { city: current.city, lat: current.lat, lon: current.lon, ...colors }]);
-                      }
-                    }}
+                    onClick={handleToggle}
                     className="absolute top-6 right-6 z-20 transition-colors"
                     title={isFav ? "Retirer des favoris" : "Ajouter aux favoris"}
                   >
@@ -435,6 +515,107 @@ export default function HomePage() {
           </div>
         )}
       </div>
+
+      {/* Auth modal (login / register) */}
+      {authModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-surface-container-lowest border border-white/10 rounded-3xl p-8 shadow-2xl">
+
+            <h2 className="text-xl font-bold mb-1">
+              {authModal === "login" ? "Connexion" : "Inscription"}
+            </h2>
+            <p className="text-xs text-on-surface-variant mb-6">
+              {authModal === "login" ? (
+                <>Pas encore de compte ?{" "}
+                  <button onClick={openRegister} className="text-primary hover:underline font-semibold">S&apos;inscrire</button>
+                </>
+              ) : (
+                <>Déjà un compte ?{" "}
+                  <button onClick={openLogin} className="text-primary hover:underline font-semibold">Se connecter</button>
+                </>
+              )}
+            </p>
+
+            <form onSubmit={handleAuthSubmit} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-on-surface-variant font-semibold uppercase tracking-wider">Email</label>
+                <input
+                  type="email"
+                  required
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  placeholder="vous@example.com"
+                  className="bg-surface-container-high border border-white/10 rounded-xl px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+                />
+              </div>
+
+              {(() => {
+                const pwdInvalid = authModal === "register" && authPassword.length > 0 && authPassword.length < 8;
+                const confirmInvalid = authModal === "register" && authConfirm.length > 0 && authConfirm !== authPassword;
+                const baseInput = "bg-surface-container-high rounded-xl px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 transition-all border";
+                return (
+                  <>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs text-on-surface-variant font-semibold uppercase tracking-wider">Mot de passe</label>
+                        {pwdInvalid && <span className="text-[10px] text-red-400 font-medium">8 caractères minimum</span>}
+                      </div>
+                      <input
+                        type="password"
+                        required
+                        value={authPassword}
+                        onChange={(e) => setAuthPassword(e.target.value)}
+                        placeholder={authModal === "register" ? "8 caractères minimum" : "••••••••"}
+                        className={`${baseInput} ${pwdInvalid ? "border-red-500/60 focus:ring-red-500/30" : authPassword.length >= 8 ? "border-green-500/60 focus:ring-green-500/30" : "border-white/10 focus:ring-primary/30"}`}
+                      />
+                    </div>
+
+                    {authModal === "register" && (
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs text-on-surface-variant font-semibold uppercase tracking-wider">Confirmer</label>
+                          {confirmInvalid && <span className="text-[10px] text-red-400 font-medium">Ne correspond pas</span>}
+                        </div>
+                        <input
+                          type="password"
+                          required
+                          value={authConfirm}
+                          onChange={(e) => setAuthConfirm(e.target.value)}
+                          placeholder="••••••••"
+                          className={`${baseInput} ${confirmInvalid ? "border-red-500/60 focus:ring-red-500/30" : authConfirm.length > 0 && authConfirm === authPassword ? "border-green-500/60 focus:ring-green-500/30" : "border-white/10 focus:ring-primary/30"}`}
+                        />
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
+              {authError && (
+                <p className="text-sm text-red-400 bg-red-400/10 rounded-xl px-4 py-2.5">{authError}</p>
+              )}
+
+              <div className="flex gap-3 mt-2">
+                <button
+                  type="button"
+                  onClick={closeAuth}
+                  className="flex-1 py-2.5 rounded-xl border border-white/10 text-sm font-semibold text-on-surface-variant hover:bg-white/5 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={authLoading}
+                  className="flex-1 py-2.5 rounded-xl bg-primary text-on-primary text-sm font-bold hover:brightness-110 transition-all disabled:opacity-50"
+                >
+                  {authLoading ? "…" : authModal === "login" ? "Se connecter" : "Créer un compte"}
+                </button>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

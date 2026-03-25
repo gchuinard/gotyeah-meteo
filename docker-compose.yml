@@ -1,15 +1,20 @@
 services:
-  weathernow-front:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: weathernow-front
+  weathernow-db:
+    image: postgres:16-alpine
+    container_name: weathernow-db
     expose:
-      - "3000"
+      - "5432"
     environment:
-      - NEXT_PUBLIC_API_URL=http://weathernow-api:8000
-    depends_on:
-      - weathernow-api
+      POSTGRES_USER:     ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB:       ${POSTGRES_DB}
+    volumes:
+      - weathernow-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - weathernow-net
 
@@ -18,13 +23,33 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: weathernow-api
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     env_file:
       - .env
+    depends_on:
+      weathernow-db:
+        condition: service_healthy
+    networks:
+      - weathernow-net
+
+  weathernow-front:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: weathernow-front
+    expose:
+      - "3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+    depends_on:
+      - weathernow-api
     networks:
       - weathernow-net
 
 networks:
   weathernow-net:
     driver: bridge
+
+volumes:
+  weathernow-db-data:
