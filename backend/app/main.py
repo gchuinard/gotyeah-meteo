@@ -14,11 +14,13 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(name)s - %(
 # Optional auth/user routers — require extra packages (jose, passlib, asyncpg)
 # ---------------------------------------------------------------------------
 _auth_available = False
+_auth_error: Exception | None = None
 try:
     from app.routers import auth, user
     _auth_available = True
-except ImportError as exc:
-    log.warning("⚠️  Auth routers disabled — missing package: %s", exc)
+except Exception as exc:
+    _auth_error = exc
+    log.warning("⚠️  Auth routers disabled — %s: %s", type(exc).__name__, exc)
     log.warning("    Run:  pip install python-jose[cryptography] passlib[bcrypt] asyncpg sqlalchemy[asyncio]")
 
 app = FastAPI(
@@ -39,19 +41,18 @@ async def on_startup():
         log.info("✅ Auth routers loaded  (/auth  /user)")
     else:
         log.warning("⚠️  Auth routers NOT loaded — endpoints /auth and /user are unavailable")
+        if _auth_error:
+            log.warning("    Cause: %s: %s", type(_auth_error).__name__, _auth_error)
 
 # ---------------------------------------------------------------------------
-# CORS — allow requests from the Next.js dev server
+# CORS — allow requests from the Next.js dev server and production
 # ---------------------------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=["https://meteo.gautierchuinard.com"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 # ---------------------------------------------------------------------------
