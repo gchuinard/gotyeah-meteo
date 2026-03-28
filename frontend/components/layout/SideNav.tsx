@@ -1,74 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-
-interface Theme {
-  id:           string;
-  name:         string;
-  light:        boolean;
-  primary:      string;
-  tertiary:     string;
-  bg:           string;
-  surfaceCl:    string;
-  surfaceC:     string;
-  surfaceCh:    string;
-  surfaceCgh:   string;
-  onSurface:    string;
-  onSurfaceV:   string;
-  onPrimary:    string;
-}
-
-const THEMES: Theme[] = [
-  {
-    id: "ocean", name: "Océan", light: false,
-    primary:    "123 208 255", tertiary:   "222 194 154",
-    bg:         "11 19 38",    surfaceCl:  "6 14 32",
-    surfaceC:   "23 31 51",    surfaceCh:  "34 42 61",
-    surfaceCgh: "45 52 73",
-    onSurface:  "218 226 253", onSurfaceV: "198 198 205", onPrimary: "0 53 74",
-  },
-  {
-    id: "aurora", name: "Aurora", light: false,
-    primary:    "105 240 174", tertiary:   "234 128 252",
-    bg:         "10 20 14",    surfaceCl:  "5 12 8",
-    surfaceC:   "18 32 22",    surfaceCh:  "28 44 32",
-    surfaceCgh: "40 58 44",
-    onSurface:  "210 248 225", onSurfaceV: "180 210 190", onPrimary: "5 60 30",
-  },
-  {
-    id: "sunset", name: "Coucher de soleil", light: false,
-    primary:    "255 138 101", tertiary:   "255 213 79",
-    bg:         "22 10 8",     surfaceCl:  "14 6 4",
-    surfaceC:   "36 18 12",    surfaceCh:  "50 26 18",
-    surfaceCgh: "66 34 24",
-    onSurface:  "255 222 210", onSurfaceV: "220 180 165", onPrimary: "80 20 0",
-  },
-  {
-    id: "midnight", name: "Minuit", light: false,
-    primary:    "206 147 216", tertiary:   "128 222 234",
-    bg:         "8 8 18",      surfaceCl:  "4 4 12",
-    surfaceC:   "16 14 32",    surfaceCh:  "26 22 46",
-    surfaceCgh: "38 32 62",
-    onSurface:  "230 220 255", onSurfaceV: "190 180 220", onPrimary: "50 10 70",
-  },
-  {
-    id: "jour", name: "Jour", light: true,
-    primary:    "14 120 200",  tertiary:   "200 100 10",
-    bg:         "238 244 255", surfaceCl:  "255 255 255",
-    surfaceC:   "255 255 255", surfaceCh:  "232 240 255",
-    surfaceCgh: "215 228 252",
-    onSurface:  "10 16 40",    onSurfaceV: "70 80 120",   onPrimary: "255 255 255",
-  },
-  {
-    id: "pastel", name: "Pastel", light: true,
-    primary:    "130 60 200",  tertiary:   "210 60 110",
-    bg:         "248 244 255", surfaceCl:  "255 255 255",
-    surfaceC:   "255 255 255", surfaceCh:  "242 236 255",
-    surfaceCgh: "228 218 252",
-    onSurface:  "28 10 45",    onSurfaceV: "90 70 120",   onPrimary: "255 255 255",
-  },
-];
+import { useTheme } from "@/context/ThemeContext";
+import { THEMES } from "@/lib/themes";
+import { apiUpdatePreferences } from "@/lib/api/user";
 import type {
   Units, TempUnit, WindUnit, PressureUnit, PrecipUnit,
   VisUnit, TimeFormat, DateFormat, DistUnit, HeightUnit,
@@ -112,35 +48,68 @@ function UnitGroup<T extends string>({
   );
 }
 
+/**
+ * SideNav
+ *
+ * Barre latérale desktop et navigation mobile.
+ * Contient le modal Profil avec le sélecteur d'ambiance :
+ * - prévisualisation immédiate au clic sur une tuile
+ * - "Annuler" restaure l'ambiance d'avant l'ouverture du modal
+ * - "Valider" persiste le choix en base puis met à jour le cache localStorage
+ *
+ * @param props.units - Préférences d'unités actives.
+ * @param props.onUnitsChange - Callback de mise à jour des unités.
+ * @param props.onOpenLogin - Ouvre le modal de connexion.
+ * @param props.onOpenRegister - Ouvre le modal d'inscription.
+ */
 export function SideNav({ units, onUnitsChange, onOpenLogin, onOpenRegister }: Props) {
   const set = <K extends keyof Units>(key: K, val: Units[K]) =>
     onUnitsChange({ ...units, [key]: val });
 
-  const { user, logout } = useAuth();
+  const { user, logout, getToken } = useAuth();
+  const { themeId, setTheme }      = useTheme();
+
   const [profileOpen, setProfileOpen] = useState(false);
   const [pseudo, setPseudo]           = useState("");
   const [savedPseudo, setSavedPseudo] = useState("");
-  const [themeId, setThemeId]         = useState("ocean");
+  // Snapshot de l'ambiance active au moment de l'ouverture du modal — utilisé par "Annuler"
+  const [snapshotId, setSnapshotId]   = useState(themeId);
+  const [saving, setSaving]           = useState(false);
 
-  useEffect(() => {
-    const t = THEMES.find(t => t.id === themeId) ?? THEMES[0];
-    const root = document.documentElement;
-    root.style.setProperty("--wn-primary",      t.primary);
-    root.style.setProperty("--wn-tertiary",     t.tertiary);
-    root.style.setProperty("--wn-bg",           t.bg);
-    root.style.setProperty("--wn-surface-cl",   t.surfaceCl);
-    root.style.setProperty("--wn-surface-c",    t.surfaceC);
-    root.style.setProperty("--wn-surface-ch",   t.surfaceCh);
-    root.style.setProperty("--wn-surface-cgh",  t.surfaceCgh);
-    root.style.setProperty("--wn-on-surface",   t.onSurface);
-    root.style.setProperty("--wn-on-surface-v", t.onSurfaceV);
-    root.style.setProperty("--wn-on-primary",   t.onPrimary);
-    if (t.light) {
-      root.setAttribute("data-light", "true");
-    } else {
-      root.removeAttribute("data-light");
+  /** Ouvre le modal Profil en capturant l'ambiance courante comme point de restauration. */
+  function openProfile() {
+    setSnapshotId(themeId);
+    setPseudo(savedPseudo);
+    setProfileOpen(true);
+  }
+
+  /** Annule les modifications : restaure l'ambiance snapshot sans persister. */
+  function handleCancel() {
+    setTheme(snapshotId, false);
+    setProfileOpen(false);
+  }
+
+  /**
+   * Valide le choix d'ambiance : persiste en base (si connecté) puis met à jour le cache local.
+   * En cas d'erreur réseau, le thème prévisualisé reste actif mais n'est pas persisté.
+   */
+  async function handleValidate() {
+    setSaving(true);
+    try {
+      if (user) {
+        const token = await getToken();
+        await apiUpdatePreferences(token, { theme: themeId });
+      }
+      // Persistance du cache localStorage après confirmation (anti-flash au prochain chargement)
+      setTheme(themeId, true);
+      setSavedPseudo(pseudo.trim());
+      setProfileOpen(false);
+    } catch {
+      // TODO(gautier): afficher un toast d'erreur
+    } finally {
+      setSaving(false);
     }
-  }, [themeId]);
+  }
 
   return (
     <>
@@ -158,7 +127,7 @@ export function SideNav({ units, onUnitsChange, onOpenLogin, onOpenRegister }: P
           {user ? (
             <>
               <button
-                onClick={() => { setPseudo(savedPseudo); setProfileOpen(true); }}
+                onClick={openProfile}
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all duration-300 text-on-surface-variant hover:text-on-surface hover:bg-white/5"
               >
                 <span className="material-symbols-outlined">person</span>
@@ -303,7 +272,7 @@ export function SideNav({ units, onUnitsChange, onOpenLogin, onOpenRegister }: P
       <nav className="lg:hidden fixed bottom-0 w-full z-50 rounded-t-[1.5rem] bg-surface-container-lowest/40 backdrop-blur-3xl shadow-[0_-8px_32px_0_rgba(0,30,44,0.06)]">
         <div className="flex justify-around items-center px-4 pb-6 pt-2">
           <button
-            onClick={() => { setPseudo(savedPseudo); setProfileOpen(true); }}
+            onClick={openProfile}
             className="flex flex-col items-center justify-center px-4 py-2 rounded-xl active:scale-90 transition-all duration-200 text-on-surface-variant hover:text-on-surface"
           >
             <span className="material-symbols-outlined">person</span>
@@ -320,7 +289,7 @@ export function SideNav({ units, onUnitsChange, onOpenLogin, onOpenRegister }: P
             {user && <p className="text-xs text-on-surface-variant mb-6">{user.email}</p>}
             {!user && <div className="mb-6" />}
 
-            {/* Theme picker */}
+            {/* Sélecteur d'ambiance */}
             <p className="text-xs text-on-surface-variant font-semibold uppercase tracking-wider mb-1">Ambiance</p>
             <p className="text-[10px] text-on-surface-variant mb-3">Mode sombre</p>
             <div className="grid grid-cols-2 gap-2 mb-3">
@@ -329,7 +298,8 @@ export function SideNav({ units, onUnitsChange, onOpenLogin, onOpenRegister }: P
                 return (
                   <button
                     key={t.id}
-                    onClick={() => setThemeId(t.id)}
+                    // Prévisualisation immédiate sans persistance — le snapshot permet de revenir en arrière
+                    onClick={() => setTheme(t.id, false)}
                     className={[
                       "relative flex flex-col items-start gap-2 p-3 rounded-2xl border transition-all",
                       isActive ? "border-white/30 bg-white/5" : "border-white/5 hover:bg-white/5",
@@ -357,7 +327,7 @@ export function SideNav({ units, onUnitsChange, onOpenLogin, onOpenRegister }: P
                 return (
                   <button
                     key={t.id}
-                    onClick={() => setThemeId(t.id)}
+                    onClick={() => setTheme(t.id, false)}
                     className={[
                       "relative flex flex-col items-start gap-2 p-3 rounded-2xl border transition-all",
                       isActive ? "border-white/30 bg-white/5" : "border-white/5 hover:bg-white/5",
@@ -391,16 +361,18 @@ export function SideNav({ units, onUnitsChange, onOpenLogin, onOpenRegister }: P
             />
             <div className="flex gap-3">
               <button
-                onClick={() => setProfileOpen(false)}
-                className="flex-1 py-2.5 rounded-xl border border-white/10 text-sm font-semibold text-on-surface-variant hover:bg-white/5 transition-colors"
+                onClick={handleCancel}
+                disabled={saving}
+                className="flex-1 py-2.5 rounded-xl border border-white/10 text-sm font-semibold text-on-surface-variant hover:bg-white/5 transition-colors disabled:opacity-50"
               >
                 Annuler
               </button>
               <button
-                onClick={() => { setSavedPseudo(pseudo.trim()); setProfileOpen(false); }}
-                className="flex-1 py-2.5 rounded-xl bg-primary text-on-primary text-sm font-bold hover:brightness-110 transition-all"
+                onClick={handleValidate}
+                disabled={saving}
+                className="flex-1 py-2.5 rounded-xl bg-primary text-on-primary text-sm font-bold hover:brightness-110 transition-all disabled:opacity-50"
               >
-                Valider
+                {saving ? "Enregistrement…" : "Valider"}
               </button>
             </div>
           </div>
