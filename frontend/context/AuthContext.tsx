@@ -20,6 +20,7 @@ import {
   type ReactNode,
 } from "react";
 import {
+  apiDeleteAccount,
   apiLogin,
   apiLogout,
   apiMe,
@@ -41,6 +42,7 @@ interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, username: string) => Promise<void>;
   logout: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   /**
    * Retourne un access token valide, en le rafraîchissant automatiquement si nécessaire.
    * @throws {Error} Si l'utilisateur n'est pas authentifié.
@@ -151,6 +153,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadAndApplyTheme]);
 
   /**
+   * Supprime le compte de l'utilisateur côté serveur puis efface la session locale.
+   *
+   * @throws {Error} Si l'utilisateur n'est pas authentifié.
+   */
+  const deleteAccount = useCallback(async () => {
+    const access = state.accessToken;
+    if (!access) throw new Error("Not authenticated");
+    await apiDeleteAccount(access);
+    localStorage.removeItem(LS_ACCESS);
+    localStorage.removeItem(LS_REFRESH);
+    setState({ user: null, accessToken: null, refreshToken: null, loading: false });
+  }, [state.accessToken]);
+
+  /**
    * Révoque le refresh token côté serveur et efface la session locale.
    */
   const logout = useCallback(async () => {
@@ -179,7 +195,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [state.accessToken, state.refreshToken]);
 
   return (
-    <AuthContext.Provider value={{ ...state, login, register, logout, getToken }}>
+    <AuthContext.Provider value={{ ...state, login, register, logout, deleteAccount, getToken }}>
       {children}
     </AuthContext.Provider>
   );

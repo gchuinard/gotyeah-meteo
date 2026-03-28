@@ -66,7 +66,7 @@ export function SideNav({ units, onUnitsChange, onOpenLogin, onOpenRegister }: P
   const set = <K extends keyof Units>(key: K, val: Units[K]) =>
     onUnitsChange({ ...units, [key]: val });
 
-  const { user, logout, getToken } = useAuth();
+  const { user, logout, getToken, deleteAccount } = useAuth();
   const { themeId, setTheme }      = useTheme();
 
   const [profileOpen, setProfileOpen] = useState(false);
@@ -75,6 +75,8 @@ export function SideNav({ units, onUnitsChange, onOpenLogin, onOpenRegister }: P
   // Snapshot de l'ambiance active au moment de l'ouverture du modal — utilisé par "Annuler"
   const [snapshotId, setSnapshotId]   = useState(themeId);
   const [saving, setSaving]           = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting]           = useState(false);
 
   /** Ouvre le modal Profil en capturant l'ambiance courante comme point de restauration. */
   function openProfile() {
@@ -100,12 +102,12 @@ export function SideNav({ units, onUnitsChange, onOpenLogin, onOpenRegister }: P
         const token = await getToken();
         await apiUpdatePreferences(token, { theme: themeId });
       }
-      // Persistance du cache localStorage après confirmation (anti-flash au prochain chargement)
+    } catch {
+      // Non bloquant — on persiste quand même localement
+    } finally {
+      // Persistance locale systématique — même si l'API échoue
       setTheme(themeId, true);
       setSavedPseudo(pseudo.trim());
-    } catch {
-      // TODO(gautier): afficher un toast d'erreur
-    } finally {
       setSaving(false);
       setProfileOpen(false);
     }
@@ -375,6 +377,44 @@ export function SideNav({ units, onUnitsChange, onOpenLogin, onOpenRegister }: P
                 {saving ? "Enregistrement…" : "Valider"}
               </button>
             </div>
+
+            {user && (
+              <div className="mt-6 pt-6 border-t border-white/10">
+                {!confirmDelete ? (
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="w-full py-2.5 rounded-xl border border-red-500/30 text-sm font-semibold text-red-400 hover:bg-red-400/10 transition-colors"
+                  >
+                    Supprimer mon compte
+                  </button>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    <p className="text-xs text-on-surface-variant text-center">
+                      Action irréversible. Toutes vos données seront supprimées.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setConfirmDelete(false)}
+                        disabled={deleting}
+                        className="flex-1 py-2.5 rounded-xl border border-white/10 text-sm font-semibold text-on-surface-variant hover:bg-white/5 transition-colors disabled:opacity-50"
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        disabled={deleting}
+                        onClick={async () => {
+                          setDeleting(true);
+                          try { await deleteAccount(); } finally { setDeleting(false); setConfirmDelete(false); }
+                        }}
+                        className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-bold hover:brightness-110 transition-all disabled:opacity-50"
+                      >
+                        {deleting ? "Suppression…" : "Confirmer"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
