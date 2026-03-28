@@ -125,6 +125,7 @@ export default function HomePage() {
       return;
     }
     apiGetFavorites(accessToken).then((apiFavs) => {
+      if (apiFavs.length === 0) return; // pas de favoris sauvegardés → garde les défauts
       setFavorites(
         apiFavs.map((f, i) => ({
           id: f.id,
@@ -137,7 +138,7 @@ export default function HomePage() {
       );
     }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, accessToken]);
 
   useEffect(() => {
     Promise.all(

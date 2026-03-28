@@ -188,6 +188,22 @@ async def logout(body: RefreshRequest, db: AsyncSession = Depends(get_db)) -> No
         await db.commit()
 
 
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_me(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """
+    Supprime le compte de l'utilisateur connecté (cascade sur préférences, favoris, tokens).
+
+    Args:
+        current_user (User): Utilisateur résolu par la dépendance get_current_user.
+        db (AsyncSession): Session de base de données.
+    """
+    await db.delete(current_user)
+    await db.commit()
+
+
 @router.get("/me", response_model=UserOut)
 async def me(current_user: User = Depends(get_current_user)) -> UserOut:
     """

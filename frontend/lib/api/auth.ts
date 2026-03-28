@@ -105,6 +105,18 @@ export async function apiLogout(refreshToken: string): Promise<void> {
 }
 
 /**
+ * Supprime le compte de l'utilisateur connecté (irréversible).
+ *
+ * @param accessToken - JWT d'accès valide.
+ */
+export async function apiDeleteAccount(accessToken: string): Promise<void> {
+  await fetch(`${API_URL}/auth/me`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
+
+/**
  * Retourne les informations du compte associé à l'access token.
  *
  * @param accessToken - JWT d'accès valide.
