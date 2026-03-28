@@ -31,6 +31,8 @@ export interface CurrentWeather {
   dt: number;
   sunrise: number;
   sunset: number;
+  uv_index?: number;
+  aqi?: number;
 }
 
 export interface HourlyItem {

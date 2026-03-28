@@ -52,6 +52,19 @@ function owmConditionKey(main: string, description: string): string {
   }
 }
 
+function getUvLabel(uvi: number, tr: Record<string, string>): string {
+  if (uvi <= 2)  return tr.uvLow       ?? "Low";
+  if (uvi <= 5)  return tr.uvModerate  ?? "Moderate";
+  if (uvi <= 7)  return tr.uvHigh      ?? "High";
+  if (uvi <= 10) return tr.uvVeryHigh  ?? "Very High";
+  return tr.uvExtreme ?? "Extreme";
+}
+
+function getAqiLabel(aqi: number, tr: Record<string, string>): string {
+  const keys = ["aqiGood", "aqiFair", "aqiModerate", "aqiPoor", "aqiVeryPoor"];
+  return tr[keys[aqi - 1]] ?? "—";
+}
+
 function formatHour(dt: number, fmt: "24h" | "12h"): string {
   return new Date(dt * 1000).toLocaleTimeString("en", {
     hour: "numeric",
@@ -332,12 +345,12 @@ export default function HomePage() {
               })()}
 
               {/* City + temp + stats */}
-              <div className="relative z-10 flex items-start justify-between gap-6">
+              <div className="relative z-10 flex items-start gap-8">
                 {/* LEFT: location + temperature + condition */}
-                <div className="flex-1 min-w-0">
+                <div className="flex-shrink-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="material-symbols-outlined text-primary text-xl">location_on</span>
-                    <h2 className="text-2xl lg:text-3xl font-bold tracking-tight truncate">{current.city}, {current.country}</h2>
+                    <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">{current.city}, {current.country}</h2>
                   </div>
                   <p className="text-on-surface-variant text-sm capitalize mb-3">{dateStr}</p>
                   <div className="flex items-start">
@@ -352,24 +365,28 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* RIGHT: stats panel */}
-                <div className="flex-shrink-0 flex flex-col justify-center gap-3 pt-1">
+                {/* RIGHT: 3×2 stats grid */}
+                <div className="flex-1 grid grid-cols-3 gap-x-8 gap-y-6 pt-1">
                   {((): { icon: string; labelKey: string; value: string; unit: string }[] => {
                     const wind = fmtWind(current.wind_speed, units.wind);
                     const pres = fmtPressure(current.pressure, units.pressure);
+                    const uvi  = current.uv_index;
+                    const aqi  = current.aqi;
                     return [
-                      { icon: "air",          labelKey: "wind",      value: wind.value,                                      unit: wind.label  },
-                      { icon: "humidity_mid", labelKey: "humidity",  value: `${current.humidity}`,                           unit: "%"         },
-                      { icon: "compress",     labelKey: "pressure",  value: pres.value,                                      unit: pres.label  },
-                      { icon: "thermostat",   labelKey: "feelsLike", value: `${fmtTempVal(current.feels_like, units.temp)}`, unit: `°${units.temp}` },
+                      { icon: "air",          labelKey: "wind",       value: wind.value,                                       unit: wind.label      },
+                      { icon: "humidity_mid", labelKey: "humidity",   value: `${current.humidity}`,                            unit: "%"             },
+                      { icon: "compress",     labelKey: "pressure",   value: pres.value,                                       unit: pres.label      },
+                      { icon: "thermostat",   labelKey: "feelsLike",  value: `${fmtTempVal(current.feels_like, units.temp)}`,  unit: `°${units.temp}` },
+                      { icon: "wb_sunny",     labelKey: "uvIndex",    value: uvi != null ? `${Math.round(uvi)} · ${getUvLabel(uvi, tr)}` : "—", unit: "" },
+                      { icon: "aq",           labelKey: "airQuality", value: aqi != null ? getAqiLabel(aqi, tr) : "—",         unit: ""              },
                     ];
                   })().map((stat) => (
-                    <div key={stat.labelKey} className="flex items-center gap-3">
-                      <span className="material-symbols-outlined text-base text-primary p-2 bg-primary/10 rounded-xl flex-shrink-0">{stat.icon}</span>
-                      <div className="min-w-0">
-                        <p className="text-[10px] text-on-surface-variant font-medium uppercase tracking-wider">{tr[stat.labelKey]}</p>
+                    <div key={stat.labelKey} className="flex flex-col gap-2">
+                      <span className="material-symbols-outlined text-primary text-2xl p-2 bg-primary/10 rounded-xl w-fit">{stat.icon}</span>
+                      <div>
+                        <p className="text-xs text-on-surface-variant font-medium uppercase tracking-wider">{tr[stat.labelKey]}</p>
                         <p className="text-base font-bold leading-tight">
-                          {stat.value} <span className="text-xs font-normal text-on-surface-variant">{stat.unit}</span>
+                          {stat.value}{stat.unit && <span className="text-xs font-normal text-on-surface-variant"> {stat.unit}</span>}
                         </p>
                       </div>
                     </div>

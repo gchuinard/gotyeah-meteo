@@ -35,6 +35,8 @@ class CurrentWeather(BaseModel):
     dt: int
     sunrise: int
     sunset: int
+    uv_index: Optional[float] = None
+    aqi: Optional[int] = None
 
 
 class HourlyItem(BaseModel):

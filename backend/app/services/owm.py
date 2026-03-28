@@ -29,5 +29,17 @@ class OWMService:
             {"lat": lat, "lon": lon, "units": "metric"},
         )
 
+    async def uv_index(self, lat: float, lon: float) -> dict:
+        return await self._get(
+            f"{OWM_BASE}/data/2.5/uvi",
+            {"lat": lat, "lon": lon},
+        )
+
+    async def air_quality(self, lat: float, lon: float) -> dict:
+        return await self._get(
+            f"{OWM_BASE}/data/2.5/air_pollution",
+            {"lat": lat, "lon": lon},
+        )
+
 
 owm_service = OWMService()
