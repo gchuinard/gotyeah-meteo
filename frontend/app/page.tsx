@@ -346,7 +346,7 @@ export default function HomePage() {
 
               {/* City + temp + stats */}
               <div className="relative z-10 flex items-start gap-8">
-                {/* LEFT: location + temperature + condition */}
+                {/* LEFT: location + temperature */}
                 <div className="flex-shrink-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="material-symbols-outlined text-primary text-xl">location_on</span>
@@ -359,14 +359,18 @@ export default function HomePage() {
                     </span>
                     <span className="text-4xl lg:text-5xl font-medium mt-3 text-primary">°{units.temp}</span>
                   </div>
-                  <div className="flex items-center gap-3 mt-1">
-                    <span className="material-symbols-outlined text-3xl flex-shrink-0" style={{ color: condColor }}>{condIcon}</span>
-                    <p className="text-xl font-medium capitalize">{tr[condKey] ?? current.weather[0].description}</p>
-                  </div>
                 </div>
 
-                {/* RIGHT: 3×2 stats grid */}
-                <div className="flex-1 grid grid-cols-3 gap-x-8 gap-y-6 pt-1">
+                {/* RIGHT: condition + 3×2 stats grid */}
+                <div className="flex-1 flex flex-col gap-6 pt-1">
+                  {/* Big condition */}
+                  <div className="flex items-center gap-4">
+                    <span className="material-symbols-outlined flex-shrink-0" style={{ fontSize: "3rem", color: condColor }}>{condIcon}</span>
+                    <p className="text-3xl lg:text-4xl font-bold capitalize">{tr[condKey] ?? current.weather[0].description}</p>
+                  </div>
+
+                  {/* Stats grid */}
+                  <div className="grid grid-cols-3 gap-x-8 gap-y-6">
                   {((): { icon: string; labelKey: string; value: string; unit: string }[] => {
                     const wind = fmtWind(current.wind_speed, units.wind);
                     const pres = fmtPressure(current.pressure, units.pressure);
@@ -392,6 +396,7 @@ export default function HomePage() {
                     </div>
                   ))}
                 </div>
+                </div>{/* end RIGHT flex-col */}
               </div>
             </section>
 
