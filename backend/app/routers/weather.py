@@ -6,6 +6,7 @@ Dépendances notables :
   - owm_service : client HTTP vers l'API OpenWeatherMap (mise en cache incluse)
 """
 
+import asyncio
 import logging
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -82,11 +83,21 @@ async def current_weather(
     """
     log.debug(f"[current] lat={lat}  lon={lon}")
     try:
-        raw = await owm_service.current_weather(lat, lon)
+        raw, uv_raw, aq_raw = await asyncio.gather(
+            owm_service.current_weather(lat, lon),
+            owm_service.uv_index(lat, lon),
+            owm_service.air_quality(lat, lon),
+            return_exceptions=True,
+        )
+        if isinstance(raw, Exception):
+            raise raw
         log.debug(f"[current] ✅ {raw.get('name')}, {raw.get('sys', {}).get('country')}  temp={raw.get('main', {}).get('temp')}°C")
     except Exception as e:
         log.error(f"[current] ❌ OWM error: {e}")
         raise HTTPException(status_code=502, detail=str(e))
+
+    uv_index = uv_raw.get("value") if isinstance(uv_raw, dict) else None
+    aqi = aq_raw["list"][0]["main"]["aqi"] if isinstance(aq_raw, dict) and aq_raw.get("list") else None
 
     return CurrentWeather(
         city=raw["name"],
@@ -106,6 +117,8 @@ async def current_weather(
         dt=raw["dt"],
         sunrise=raw["sys"]["sunrise"],
         sunset=raw["sys"]["sunset"],
+        uv_index=uv_index,
+        aqi=aqi,
     )
 
 
