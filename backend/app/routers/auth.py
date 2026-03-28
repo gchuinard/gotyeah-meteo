@@ -94,7 +94,7 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)) ->
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    user = User(email=body.email, password_hash=hash_password(body.password))
+    user = User(email=body.email, username=body.username, password_hash=hash_password(body.password))
     db.add(user)
     # flush pour obtenir user.id avant d'insérer les lignes dépendantes
     await db.flush()
@@ -202,5 +202,6 @@ async def me(current_user: User = Depends(get_current_user)) -> UserOut:
     return UserOut(
         id=str(current_user.id),
         email=current_user.email,
+        username=current_user.username,
         created_at=current_user.created_at.isoformat(),
     )

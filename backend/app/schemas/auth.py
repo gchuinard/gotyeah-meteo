@@ -4,6 +4,7 @@ from pydantic import BaseModel, EmailStr, Field
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, description="Minimum 8 characters")
+    username: str = Field(min_length=2, max_length=50, description="Display name")
 
 
 class LoginRequest(BaseModel):
@@ -29,4 +30,5 @@ class RefreshRequest(BaseModel):
 class UserOut(BaseModel):
     id: str
     email: str
+    username: str | None
     created_at: str

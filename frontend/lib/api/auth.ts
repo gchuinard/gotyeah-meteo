@@ -22,6 +22,7 @@ export interface AccessTokenResponse {
 export interface UserOut {
   id: string;
   email: string;
+  username: string | null;
   created_at: string;
 }
 
@@ -48,11 +49,11 @@ async function handleResponse<T>(res: Response): Promise<T> {
  * @returns Paire de tokens (access + refresh).
  * @throws {Error} Si l'email est déjà utilisé ou si la requête échoue.
  */
-export async function apiRegister(email: string, password: string): Promise<TokenResponse> {
+export async function apiRegister(email: string, password: string, username: string): Promise<TokenResponse> {
   const res = await fetch(`${API_URL}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, username }),
   });
   return handleResponse<TokenResponse>(res);
 }
