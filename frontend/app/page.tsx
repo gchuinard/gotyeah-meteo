@@ -331,52 +331,50 @@ export default function HomePage() {
                 );
               })()}
 
-              {/* City + temp row */}
-              <div className="relative z-10 flex items-start justify-between mb-8">
-                <div>
+              {/* City + temp + stats */}
+              <div className="relative z-10 flex items-start justify-between gap-6">
+                {/* LEFT: location + temperature + condition */}
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="material-symbols-outlined text-primary text-xl">location_on</span>
-                    <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">{current.city}, {current.country}</h2>
+                    <h2 className="text-2xl lg:text-3xl font-bold tracking-tight truncate">{current.city}, {current.country}</h2>
                   </div>
-                  <p className="text-on-surface-variant text-sm capitalize mb-4">{dateStr}</p>
+                  <p className="text-on-surface-variant text-sm capitalize mb-3">{dateStr}</p>
                   <div className="flex items-start">
                     <span className="text-[6rem] lg:text-[9rem] font-black leading-none tracking-tighter text-white">
                       {fmtTempVal(current.temp, units.temp)}
                     </span>
                     <span className="text-4xl lg:text-5xl font-medium mt-3 text-primary">°{units.temp}</span>
                   </div>
-                  <div className="flex items-center gap-3 mt-3">
+                  <div className="flex items-center gap-3 mt-1">
                     <span className="material-symbols-outlined text-3xl flex-shrink-0" style={{ color: condColor }}>{condIcon}</span>
                     <p className="text-xl font-medium capitalize">{tr[condKey] ?? current.weather[0].description}</p>
                   </div>
                 </div>
-                <span className="hidden md:block material-symbols-outlined flex-shrink-0" style={{ fontSize: "9rem", color: condColor }}>
-                  {condIcon}
-                </span>
-              </div>
 
-              {/* Stats row */}
-              <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-4 pt-6 border-t border-white/5">
-                {((): { icon: string; labelKey: string; value: string; unit: string }[] => {
-                  const wind = fmtWind(current.wind_speed, units.wind);
-                  const pres = fmtPressure(current.pressure, units.pressure);
-                  return [
-                    { icon: "air",          labelKey: "wind",      value: wind.value,                              unit: wind.label  },
-                    { icon: "humidity_mid", labelKey: "humidity",  value: `${current.humidity}`,                   unit: "%"         },
-                    { icon: "compress",     labelKey: "pressure",  value: pres.value,                              unit: pres.label  },
-                    { icon: "thermostat",   labelKey: "feelsLike", value: `${fmtTempVal(current.feels_like, units.temp)}`, unit: `°${units.temp}` },
-                  ];
-                })().map((stat) => (
-                  <div key={stat.labelKey} className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-primary p-2 bg-primary/10 rounded-xl flex-shrink-0">{stat.icon}</span>
-                    <div>
-                      <p className="text-[10px] text-on-surface-variant font-medium uppercase tracking-wider">{tr[stat.labelKey]}</p>
-                      <p className="text-lg font-bold">
-                        {stat.value} <span className="text-sm font-normal text-on-surface-variant">{stat.unit}</span>
-                      </p>
+                {/* RIGHT: stats panel */}
+                <div className="flex-shrink-0 flex flex-col justify-center gap-3 pt-1">
+                  {((): { icon: string; labelKey: string; value: string; unit: string }[] => {
+                    const wind = fmtWind(current.wind_speed, units.wind);
+                    const pres = fmtPressure(current.pressure, units.pressure);
+                    return [
+                      { icon: "air",          labelKey: "wind",      value: wind.value,                                      unit: wind.label  },
+                      { icon: "humidity_mid", labelKey: "humidity",  value: `${current.humidity}`,                           unit: "%"         },
+                      { icon: "compress",     labelKey: "pressure",  value: pres.value,                                      unit: pres.label  },
+                      { icon: "thermostat",   labelKey: "feelsLike", value: `${fmtTempVal(current.feels_like, units.temp)}`, unit: `°${units.temp}` },
+                    ];
+                  })().map((stat) => (
+                    <div key={stat.labelKey} className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-base text-primary p-2 bg-primary/10 rounded-xl flex-shrink-0">{stat.icon}</span>
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-on-surface-variant font-medium uppercase tracking-wider">{tr[stat.labelKey]}</p>
+                        <p className="text-base font-bold leading-tight">
+                          {stat.value} <span className="text-xs font-normal text-on-surface-variant">{stat.unit}</span>
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </section>
 
@@ -387,17 +385,17 @@ export default function HomePage() {
               <button
                 onClick={requestLocation}
                 disabled={locStatus === "loading"}
-                className="w-full flex items-center gap-3 px-5 py-3.5 bg-primary/10 hover:bg-primary/20 border border-primary/20 rounded-2xl transition-all active:scale-95 disabled:opacity-60"
+                className="w-full flex items-center gap-3 px-4 py-2.5 bg-primary/10 hover:bg-primary/20 border border-primary/20 rounded-2xl transition-all active:scale-95 disabled:opacity-60"
               >
-                <span className={`material-symbols-outlined text-primary ${locStatus === "loading" ? "animate-pulse" : ""}`}>
+                <span className={`material-symbols-outlined text-primary text-xl ${locStatus === "loading" ? "animate-pulse" : ""}`}>
                   my_location
                 </span>
                 <div className="text-left">
-                  <p className="text-sm font-semibold text-primary">
+                  <p className="text-sm font-semibold text-primary leading-tight">
                     {locStatus === "loading" ? tr.locating : locStatus === "denied" ? tr.locationDenied : tr.currentCity}
                   </p>
                   {locStatus === "ok" && locCity && (
-                    <p className="text-xs text-on-surface-variant">{locCity}</p>
+                    <p className="text-xs text-on-surface-variant leading-tight">{locCity}</p>
                   )}
                 </div>
               </button>
