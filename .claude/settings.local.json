@@ -2,7 +2,25 @@
   "permissions": {
     "allow": [
       "Bash(/home/orould/.local/bin/uvicorn app.main:app --reload --port 8000 2>&1)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "WebSearch",
+      "WebFetch(domain:www.python.org)",
+      "Bash(py:*)",
+      "Bash(python3:*)",
+      "Bash(sudo add-apt-repository:*)",
+      "Bash(python3.14 --version)",
+      "Bash(python3.14 -m venv /mnt/c/Users/Orould/Desktop/GotYeahStudios/gotyeah-meteo/backend/venv)",
+      "Bash(/mnt/c/Users/Orould/Desktop/GotYeahStudios/gotyeah-meteo/backend/venv/bin/pip install:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker.exe compose:*)",
+      "Bash(powershell.exe -Command \"cd ''C:\\\\Users\\\\Orould\\\\Desktop\\\\GotYeahStudios\\\\gotyeah-meteo''; docker compose up -d weathernow-db\")",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(openssl s_client -connect api.meteo.gautierchuinard.com:443 -servername api.meteo.gautierchuinard.com)",
+      "Bash(curl -v --max-time 5 https://meteo.gautierchuinard.com)",
+      "Bash(curl -v --max-time 5 https://api.meteo.gautierchuinard.com)",
+      "Bash(git checkout:*)"
     ]
   }
 }
