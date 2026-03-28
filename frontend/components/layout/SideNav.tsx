@@ -103,11 +103,11 @@ export function SideNav({ units, onUnitsChange, onOpenLogin, onOpenRegister }: P
       // Persistance du cache localStorage après confirmation (anti-flash au prochain chargement)
       setTheme(themeId, true);
       setSavedPseudo(pseudo.trim());
-      setProfileOpen(false);
     } catch {
       // TODO(gautier): afficher un toast d'erreur
     } finally {
       setSaving(false);
+      setProfileOpen(false);
     }
   }
 
