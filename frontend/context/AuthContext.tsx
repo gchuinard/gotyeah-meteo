@@ -1,9 +1,12 @@
 /**
  * @file AuthContext.tsx
  * @description Contexte React d'authentification — gestion des tokens JWT, session persistante via localStorage.
+ * Au login et à la restauration de session, charge les préférences utilisateur (dont le thème).
  *
  * @dependencies
- * - lib/api/auth : appels fetch vers les endpoints /auth du backend
+ * - lib/api/auth    : appels fetch vers les endpoints /auth du backend
+ * - lib/api/user    : récupération des préférences utilisateur
+ * - context/ThemeContext : application du thème sauvegardé après authentification
  */
 
 "use client";
@@ -24,6 +27,8 @@ import {
   apiRegister,
   UserOut,
 } from "@/lib/api/auth";
+import { apiGetPreferences } from "@/lib/api/user";
+import { useTheme } from "@/context/ThemeContext";
 
 interface AuthState {
   user: UserOut | null;
@@ -53,7 +58,7 @@ const LS_REFRESH = "wn_refresh_token";
  * AuthProvider
  *
  * Fournit le contexte d'authentification à l'arbre React.
- * Au montage, restaure la session depuis localStorage et valide le token auprès du backend.
+ * Au montage, restaure la session depuis localStorage, valide le token et applique le thème sauvegardé.
  *
  * @param props.children - Arbre React à envelopper.
  */
@@ -65,6 +70,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading: true,
   });
 
+  const { setTheme } = useTheme();
+
+  /**
+   * Charge les préférences depuis le backend et applique le thème sauvegardé.
+   * Non bloquant : une erreur n'interrompt pas la restauration de session.
+   *
+   * @param token - Access token JWT valide.
+   */
+  const loadAndApplyTheme = useCallback(async (token: string) => {
+    try {
+      const prefs = await apiGetPreferences(token);
+      setTheme(prefs.theme, true);
+    } catch {
+      // Non bloquant — le thème du cache localStorage reste actif
+    }
+  }, [setTheme]);
+
   // Restauration de session au chargement de la page
   useEffect(() => {
     const access  = localStorage.getItem(LS_ACCESS);
@@ -74,7 +96,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     apiMe(access)
-      .then((user) => {
+      .then(async (user) => {
+        // Applique le thème sauvegardé avant le premier rendu significatif
+        await loadAndApplyTheme(access);
         setState({ user, accessToken: access, refreshToken: refresh, loading: false });
       })
       .catch(async () => {
@@ -83,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const { access_token } = await apiRefresh(refresh);
           localStorage.setItem(LS_ACCESS, access_token);
           const user = await apiMe(access_token);
+          await loadAndApplyTheme(access_token);
           setState({ user, accessToken: access_token, refreshToken: refresh, loading: false });
         } catch {
           // Refresh invalide — on efface la session pour forcer une reconnexion
@@ -91,10 +116,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setState({ user: null, accessToken: null, refreshToken: null, loading: false });
         }
       });
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
-   * Connecte un utilisateur et persiste ses tokens dans localStorage.
+   * Connecte un utilisateur, persiste ses tokens et applique son thème sauvegardé.
    *
    * @param email - Adresse e-mail.
    * @param password - Mot de passe.
@@ -103,10 +128,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const tokens = await apiLogin(email, password);
     const user   = await apiMe(tokens.access_token);
+    await loadAndApplyTheme(tokens.access_token);
     localStorage.setItem(LS_ACCESS,  tokens.access_token);
     localStorage.setItem(LS_REFRESH, tokens.refresh_token);
     setState({ user, accessToken: tokens.access_token, refreshToken: tokens.refresh_token, loading: false });
-  }, []);
+  }, [loadAndApplyTheme]);
 
   /**
    * Inscrit un nouvel utilisateur et ouvre sa session immédiatement.
@@ -118,10 +144,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback(async (email: string, password: string) => {
     const tokens = await apiRegister(email, password);
     const user   = await apiMe(tokens.access_token);
+    await loadAndApplyTheme(tokens.access_token);
     localStorage.setItem(LS_ACCESS,  tokens.access_token);
     localStorage.setItem(LS_REFRESH, tokens.refresh_token);
     setState({ user, accessToken: tokens.access_token, refreshToken: tokens.refresh_token, loading: false });
-  }, []);
+  }, [loadAndApplyTheme]);
 
   /**
    * Révoque le refresh token côté serveur et efface la session locale.
