@@ -85,14 +85,15 @@ export default function HomePage() {
 
   // Auth modals
   const [authModal, setAuthModal] = useState<"login" | "register" | null>(null);
-  const [authEmail, setAuthEmail]     = useState("");
+  const [authEmail, setAuthEmail]       = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authConfirm, setAuthConfirm]   = useState("");
+  const [authUsername, setAuthUsername] = useState("");
   const [authError, setAuthError]       = useState<string | null>(null);
   const [authLoading, setAuthLoading]   = useState(false);
 
-  function openLogin()    { setAuthModal("login");    setAuthEmail(""); setAuthPassword(""); setAuthConfirm(""); setAuthError(null); }
-  function openRegister() { setAuthModal("register"); setAuthEmail(""); setAuthPassword(""); setAuthConfirm(""); setAuthError(null); }
+  function openLogin()    { setAuthModal("login");    setAuthEmail(""); setAuthPassword(""); setAuthConfirm(""); setAuthUsername(""); setAuthError(null); }
+  function openRegister() { setAuthModal("register"); setAuthEmail(""); setAuthPassword(""); setAuthConfirm(""); setAuthUsername(""); setAuthError(null); }
   function closeAuth()    { setAuthModal(null); }
 
   async function handleAuthSubmit(e: React.FormEvent) {
@@ -105,7 +106,7 @@ export default function HomePage() {
     setAuthLoading(true);
     try {
       if (authModal === "login")    await login(authEmail, authPassword);
-      if (authModal === "register") await register(authEmail, authPassword);
+      if (authModal === "register") await register(authEmail, authPassword, authUsername);
       closeAuth();
     } catch (err: unknown) {
       setAuthError(err instanceof Error ? err.message : "Erreur");
@@ -568,6 +569,22 @@ export default function HomePage() {
                   className="bg-surface-container-high border border-white/10 rounded-xl px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
                 />
               </div>
+
+              {authModal === "register" && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-on-surface-variant font-semibold uppercase tracking-wider">Pseudo</label>
+                  <input
+                    type="text"
+                    required
+                    minLength={2}
+                    maxLength={50}
+                    value={authUsername}
+                    onChange={(e) => setAuthUsername(e.target.value)}
+                    placeholder="Votre pseudo"
+                    className="bg-surface-container-high border border-white/10 rounded-xl px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+                  />
+                </div>
+              )}
 
               {(() => {
                 const pwdInvalid = authModal === "register" && authPassword.length > 0 && authPassword.length < 8;

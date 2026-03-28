@@ -131,7 +131,7 @@ export function SideNav({ units, onUnitsChange, onOpenLogin, onOpenRegister }: P
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all duration-300 text-on-surface-variant hover:text-on-surface hover:bg-white/5"
               >
                 <span className="material-symbols-outlined">person</span>
-                {savedPseudo || "Profil"}
+                {user?.username || savedPseudo || "Profil"}
               </button>
               <button
                 onClick={() => logout()}
@@ -285,7 +285,7 @@ export function SideNav({ units, onUnitsChange, onOpenLogin, onOpenRegister }: P
       {profileOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-sm bg-surface-container-lowest border border-white/10 rounded-3xl p-8 shadow-2xl">
-            <h2 className="text-xl font-bold mb-1">Profil</h2>
+            <h2 className="text-xl font-bold mb-1">{user?.username || "Profil"}</h2>
             {user && <p className="text-xs text-on-surface-variant mb-6">{user.email}</p>}
             {!user && <div className="mb-6" />}
 

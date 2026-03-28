@@ -39,7 +39,7 @@ interface AuthState {
 
 interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, username: string) => Promise<void>;
   logout: () => Promise<void>;
   /**
    * Retourne un access token valide, en le rafraîchissant automatiquement si nécessaire.
@@ -141,8 +141,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * @param password - Mot de passe (min 8 caractères).
    * @throws {Error} Si l'email est déjà utilisé.
    */
-  const register = useCallback(async (email: string, password: string) => {
-    const tokens = await apiRegister(email, password);
+  const register = useCallback(async (email: string, password: string, username: string) => {
+    const tokens = await apiRegister(email, password, username);
     const user   = await apiMe(tokens.access_token);
     await loadAndApplyTheme(tokens.access_token);
     localStorage.setItem(LS_ACCESS,  tokens.access_token);
