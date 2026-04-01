@@ -232,9 +232,12 @@ export default function HomePage() {
 
         {/* Top bar */}
         <header className="fixed top-0 right-0 w-full lg:w-[calc(100%-16rem)] h-20 z-40 flex justify-between items-center px-6 lg:px-8 bg-background/80 backdrop-blur-xl">
-          <div className="lg:hidden text-xl font-black tracking-tighter text-primary">WeatherNow</div>
+          <div className="hidden sm:block lg:hidden text-xl font-black tracking-tighter text-primary">WeatherNow</div>
 
           <div className="hidden lg:flex flex-1 max-w-xl">
+            <SearchAutocomplete onSelect={search} placeholder={tr.searchPlaceholder} />
+          </div>
+          <div className="flex lg:hidden flex-1 max-w-xs ml-2">
             <SearchAutocomplete onSelect={search} placeholder={tr.searchPlaceholder} />
           </div>
 
@@ -300,7 +303,7 @@ export default function HomePage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
 
             {/* Hero + Stats — merged card */}
-            <section className="lg:col-span-2 relative overflow-hidden rounded-[2rem] p-8 lg:p-10 bg-surface-container/40 backdrop-blur-2xl border border-white/5">
+            <section className="lg:col-span-2 relative overflow-hidden rounded-[2rem] p-5 lg:p-10 bg-surface-container/40 backdrop-blur-2xl border border-white/5">
               <div className="absolute -top-24 -right-24 w-96 h-96 bg-primary/20 blur-[120px] rounded-full pointer-events-none" />
               <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-tertiary/10 blur-[100px] rounded-full pointer-events-none" />
 
@@ -347,7 +350,7 @@ export default function HomePage() {
               })()}
 
               {/* City + temp + stats */}
-              <div className="relative z-10 flex items-start gap-8">
+              <div className="relative z-10 flex flex-col lg:flex-row lg:items-start gap-6 lg:gap-8">
                 {/* LEFT: location + temperature */}
                 <div className="flex-shrink-0">
                   <div className="flex items-center gap-2 mb-1">
@@ -356,7 +359,7 @@ export default function HomePage() {
                   </div>
                   <p className="text-on-surface-variant text-sm capitalize mb-3">{dateStr}</p>
                   <div className="flex items-start">
-                    <span className="text-[6rem] lg:text-[9rem] font-black leading-none tracking-tighter text-white">
+                    <span className="text-[5rem] lg:text-[9rem] font-black leading-none tracking-tighter text-white">
                       {fmtTempVal(current.temp, units.temp)}
                     </span>
                     <span className="text-4xl lg:text-5xl font-medium mt-3 text-primary">°{units.temp}</span>
@@ -366,13 +369,13 @@ export default function HomePage() {
                 {/* RIGHT: condition + 3×2 stats grid */}
                 <div className="flex-1 flex flex-col gap-6 pt-1">
                   {/* Big condition */}
-                  <div className="flex items-center gap-4">
-                    <span className="material-symbols-outlined flex-shrink-0" style={{ fontSize: "3rem", color: condColor }}>{condIcon}</span>
-                    <p className="text-3xl lg:text-4xl font-bold capitalize">{tr[condKey] ?? current.weather[0].description}</p>
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined flex-shrink-0" style={{ fontSize: "2.5rem", color: condColor }}>{condIcon}</span>
+                    <p className="text-2xl lg:text-4xl font-bold capitalize">{tr[condKey] ?? current.weather[0].description}</p>
                   </div>
 
                   {/* Stats grid */}
-                  <div className="grid grid-cols-3 gap-x-8 gap-y-6">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-4 lg:grid-cols-3 lg:gap-x-8 lg:gap-y-6">
                   {((): { icon: string; labelKey: string; value: string; unit: string }[] => {
                     const wind = fmtWind(current.wind_speed, units.wind);
                     const pres = fmtPressure(current.pressure, units.pressure);
