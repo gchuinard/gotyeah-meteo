@@ -13,8 +13,6 @@ export type PrecipUnit   = "mm" | "in";
 export type VisUnit      = "km" | "mi";
 export type TimeFormat   = "24h" | "12h";
 export type DateFormat   = "DD/MM/YYYY" | "MM/DD/YYYY" | "YYYY-MM-DD";
-export type DistUnit     = "km" | "mi";
-export type HeightUnit   = "cm" | "in" | "ft";
 
 /** Ensemble complet des préférences d'unités d'un utilisateur. */
 export interface Units {
@@ -25,8 +23,6 @@ export interface Units {
   vis:      VisUnit;
   time:     TimeFormat;
   date:     DateFormat;
-  distance: DistUnit;
-  height:   HeightUnit;
 }
 
 /** Préférences par défaut alignées sur le système métrique international. */
@@ -38,8 +34,6 @@ export const DEFAULT_UNITS: Units = {
   vis:      "km",
   time:     "24h",
   date:     "DD/MM/YYYY",
-  distance: "km",
-  height:   "cm",
 };
 
 /**
@@ -107,12 +101,6 @@ export function fmtPressure(hpa: number, unit: PressureUnit): { value: string; l
  * @param unit - Unité cible.
  * @returns Objet { value, label } prêt à l'affichage.
  */
-export function fmtVis(meters: number, unit: VisUnit): { value: string; label: string } {
-  switch (unit) {
-    case "km": return { value: `${(meters / 1000).toFixed(1)}`,    label: "km" };
-    case "mi": return { value: `${(meters / 1609.34).toFixed(1)}`, label: "mi" };
-  }
-}
 
 /**
  * Formate un timestamp Unix en chaîne de date selon le format choisi.
@@ -121,6 +109,20 @@ export function fmtVis(meters: number, unit: VisUnit): { value: string; label: s
  * @param format - Format de date cible.
  * @returns Chaîne de date formatée (ex. "25/03/2026").
  */
+export function fmtVis(meters: number, unit: VisUnit): { value: string; label: string } {
+  switch (unit) {
+    case "mi": return { value: `${(meters / 1609.34).toFixed(1)}`, label: "mi" };
+    default:   return { value: `${(meters / 1000).toFixed(1)}`,    label: "km" };
+  }
+}
+
+export function fmtPrecip(mm: number, unit: PrecipUnit): { value: string; label: string } {
+  switch (unit) {
+    case "in": return { value: `${(mm * 0.03937).toFixed(2)}`, label: "in" };
+    default:   return { value: `${mm.toFixed(1)}`,             label: "mm" };
+  }
+}
+
 export function fmtDate(ts: number, format: DateFormat): string {
   const d    = new Date(ts * 1000);
   const dd   = String(d.getDate()).padStart(2, "0");

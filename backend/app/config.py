@@ -23,6 +23,9 @@ class Settings(BaseSettings):
         refresh_token_expire_days (int): Durée de vie du refresh token en jours.
     """
 
+    # Environnement
+    environment: str = "development"
+
     # OpenWeatherMap
     owm_api_key: str = ""
     cache_ttl_seconds: int = 600  # 10 minutes

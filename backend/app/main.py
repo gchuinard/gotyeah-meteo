@@ -47,9 +47,13 @@ async def on_startup():
 # ---------------------------------------------------------------------------
 # CORS — allow requests from the Next.js dev server and production
 # ---------------------------------------------------------------------------
+_prod_origins = ["https://meteo.gautierchuinard.com"]
+_dev_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+_allowed_origins = _prod_origins if settings.environment == "production" else _prod_origins + _dev_origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://meteo.gautierchuinard.com"],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type", "Authorization"],

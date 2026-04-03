@@ -156,6 +156,8 @@ async def forecast(
             dt=item["dt"],
             temp=item["main"]["temp"],
             weather=[WeatherCondition(**w) for w in item["weather"]],
+            rain=item.get("rain", {}).get("3h") or None,
+            pop=item.get("pop", 0),
         )
         for item in items_raw[:8]
     ]
@@ -175,6 +177,7 @@ async def forecast(
             key=lambda x: abs(datetime.fromtimestamp(x["dt"], tz=timezone.utc).hour - 12),
         )
         temps = [i["main"]["temp"] for i in group]
+        total_rain = sum(i.get("rain", {}).get("3h", 0) for i in group)
         daily.append(
             ForecastItem(
                 dt=noon["dt"],
@@ -185,6 +188,7 @@ async def forecast(
                 weather=[WeatherCondition(**w) for w in noon["weather"]],
                 wind_speed=noon["wind"]["speed"],
                 pop=max(i.get("pop", 0) for i in group),
+                rain=round(total_rain, 1) if total_rain > 0 else None,
             )
         )
 

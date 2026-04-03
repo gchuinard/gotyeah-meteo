@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { SideNav } from "@/components/layout/SideNav";
 import { TRANSLATIONS, type Lang } from "@/lib/translations";
 import { useWeather } from "@/hooks/useWeather";
 import { fetchCurrentWeather } from "@/lib/api";
 import { getWeatherIcon, getWeatherColor } from "@/lib/weatherIcons";
 import { SearchAutocomplete } from "@/components/weather/SearchAutocomplete";
-import { DEFAULT_UNITS, fmtTempVal, fmtWind, fmtPressure, fmtDate, type Units } from "@/lib/units";
+import { DEFAULT_UNITS, fmtTempVal, fmtWind, fmtPressure, fmtVis, fmtDate, fmtPrecip, type Units } from "@/lib/units";
 import type { CurrentWeather } from "@/types/weather";
 import { useAuth } from "@/context/AuthContext";
 import { apiGetFavorites, apiAddFavorite, apiDeleteFavorite } from "@/lib/api/user";
@@ -71,6 +71,76 @@ function formatHour(dt: number, fmt: "24h" | "12h"): string {
     hour12: fmt === "12h",
     ...(fmt === "24h" ? { minute: "2-digit" } : {}),
   });
+}
+
+function TempCurve({ temps, hours, nowLabel }: { temps: number[]; hours: string[]; nowLabel: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(800);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(entries => setWidth(entries[0].contentRect.width));
+    ro.observe(el);
+    setWidth(el.getBoundingClientRect().width);
+    return () => ro.disconnect();
+  }, []);
+
+  const H = 200; const PX_L = 44; const PX_R = 34; const PY_TOP = 28; const PY_BOT = 28;
+  const n = temps.length;
+  const minT = Math.min(...temps) - 2;
+  const maxT = Math.max(...temps) + 2;
+  const x = (i: number) => PX_L + (i / (n - 1)) * (width - PX_L - PX_R);
+  const y = (t: number) => PY_TOP + (1 - (t - minT) / (maxT - minT)) * (H - PY_TOP - PY_BOT);
+
+  const smooth = temps.map((t, i) => {
+    if (i === 0) return `M${x(0)},${y(t)}`;
+    const cpx = (x(i - 1) + x(i)) / 2;
+    return `C${cpx},${y(temps[i - 1])} ${cpx},${y(t)} ${x(i)},${y(t)}`;
+  }).join(" ");
+  const area = smooth + ` L${x(n - 1)},${H} L${x(0)},${H} Z`;
+
+  return (
+    <div ref={containerRef} className="mt-4 bg-surface-container/40 backdrop-blur-2xl border border-white/5 rounded-2xl overflow-hidden">
+      <div className="flex items-center gap-2 px-4 pt-4 pb-2">
+        <span className="material-symbols-outlined text-primary text-base">thermostat</span>
+        <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Température</p>
+      </div>
+      <div className="relative" style={{ height: H }}>
+        <svg width={width} height={H} viewBox={`0 0 ${width} ${H}`}>
+          <defs>
+            <linearGradient id="tempLineGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%"   stopColor="#60a5fa" />
+              <stop offset="100%" stopColor="#fbbf24" />
+            </linearGradient>
+            <linearGradient id="tempAreaGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stopColor="#93c5fd" stopOpacity="0.25" />
+              <stop offset="100%" stopColor="#fbbf24" stopOpacity="0.05" />
+            </linearGradient>
+          </defs>
+          <path d={area} fill="url(#tempAreaGrad)" />
+          <path d={smooth} fill="none" stroke="url(#tempLineGrad)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          {temps.map((t, i) => {
+            const ratio = (t - minT) / (maxT - minT);
+            const r = Math.round(96  + (251 - 96)  * ratio);
+            const g = Math.round(165 + (191 - 165) * ratio);
+            const b = Math.round(250 + (36  - 250) * ratio);
+            const dotColor = `rgb(${r},${g},${b})`;
+            return (
+            <g key={i}>
+              <circle cx={x(i)} cy={y(t)} r="4" fill="#1e293b" stroke={dotColor} strokeWidth="2" />
+              <text x={x(i)} y={y(t) - 10} textAnchor="middle" fontSize="12" fontWeight="700" fill="white">{t}°</text>
+              <text x={x(i)} y={H - 6} textAnchor="middle" fontSize="11" fill={i === 0 ? "#60a5fa" : "rgba(255,255,255,0.45)"}
+                fontWeight={i === 0 ? "700" : "400"}>
+                {hours[i]}
+              </text>
+            </g>
+            );
+          })}
+        </svg>
+      </div>
+    </div>
+  );
 }
 
 export default function HomePage() {
@@ -319,21 +389,18 @@ export default function HomePage() {
                       if (token) apiDeleteFavorite(token, existing.id).catch(() => {});
                     }
                   } else {
+                    if (!user) { openLogin(); return; }
                     const colors = FAV_COLORS[favorites.length % FAV_COLORS.length];
-                    if (user) {
-                      const token = await getToken().catch(() => null);
-                      if (token) {
-                        apiAddFavorite(token, { city_name: current.city, lat: current.lat, lon: current.lon })
-                          .then((fav) => {
-                            setFavorites(prev => [...prev, { id: fav.id, city: fav.city_name, lat: fav.lat, lon: fav.lon, ...colors }]);
-                          })
-                          .catch(() => {
-                            setFavorites(prev => [...prev, { city: current.city, lat: current.lat, lon: current.lon, ...colors }]);
-                          });
-                        return;
-                      }
+                    const token = await getToken().catch(() => null);
+                    if (token) {
+                      apiAddFavorite(token, { city_name: current.city, lat: current.lat, lon: current.lon })
+                        .then((fav) => {
+                          setFavorites(prev => [...prev, { id: fav.id, city: fav.city_name, lat: fav.lat, lon: fav.lon, ...colors }]);
+                        })
+                        .catch(() => {
+                          setFavorites(prev => [...prev, { city: current.city, lat: current.lat, lon: current.lon, ...colors }]);
+                        });
                     }
-                    setFavorites(prev => [...prev, { city: current.city, lat: current.lat, lon: current.lon, ...colors }]);
                   }
                 };
                 return (
@@ -359,35 +426,40 @@ export default function HomePage() {
                   </div>
                   <p className="text-on-surface-variant text-sm capitalize mb-3">{dateStr}</p>
                   <div className="flex items-start">
-                    <span className="text-[5rem] lg:text-[9rem] font-black leading-none tracking-tighter text-white">
+                    <span className="text-[4rem] lg:text-[6rem] font-black leading-none tracking-tighter text-white">
                       {fmtTempVal(current.temp, units.temp)}
                     </span>
-                    <span className="text-4xl lg:text-5xl font-medium mt-3 text-primary">°{units.temp}</span>
+                    <span className="text-3xl lg:text-4xl font-medium mt-2 text-primary">°{units.temp}</span>
                   </div>
                 </div>
 
-                {/* RIGHT: condition + 3×2 stats grid */}
+                {/* RIGHT: condition + stats grid */}
                 <div className="flex-1 flex flex-col gap-6 pt-1">
-                  {/* Big condition */}
+                  {/* Condition + UV */}
                   <div className="flex items-center gap-3">
                     <span className="material-symbols-outlined flex-shrink-0" style={{ fontSize: "2.5rem", color: condColor }}>{condIcon}</span>
-                    <p className="text-2xl lg:text-4xl font-bold capitalize">{tr[condKey] ?? current.weather[0].description}</p>
+                    <p className="text-2xl lg:text-3xl font-bold capitalize">{tr[condKey] ?? current.weather[0].description}</p>
+                    {current.uv_index != null && (
+                      <span className="ml-1 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold">
+                        UV {Math.round(current.uv_index)} · {getUvLabel(current.uv_index, tr)}
+                      </span>
+                    )}
                   </div>
 
-                  {/* Stats grid */}
+                  {/* Stats grid — 6 items */}
                   <div className="grid grid-cols-2 gap-x-4 gap-y-4 lg:grid-cols-3 lg:gap-x-8 lg:gap-y-6">
                   {((): { icon: string; labelKey: string; value: string; unit: string }[] => {
                     const wind = fmtWind(current.wind_speed, units.wind);
                     const pres = fmtPressure(current.pressure, units.pressure);
-                    const uvi  = current.uv_index;
+                    const vis  = fmtVis(current.visibility, units.vis);
                     const aqi  = current.aqi;
                     return [
-                      { icon: "air",          labelKey: "wind",       value: wind.value,                                       unit: wind.label      },
-                      { icon: "humidity_mid", labelKey: "humidity",   value: `${current.humidity}`,                            unit: "%"             },
-                      { icon: "compress",     labelKey: "pressure",   value: pres.value,                                       unit: pres.label      },
                       { icon: "thermostat",   labelKey: "feelsLike",  value: `${fmtTempVal(current.feels_like, units.temp)}`,  unit: `°${units.temp}` },
-                      { icon: "wb_sunny",     labelKey: "uvIndex",    value: uvi != null ? `${Math.round(uvi)} · ${getUvLabel(uvi, tr)}` : "—", unit: "" },
-                      { icon: "aq",           labelKey: "airQuality", value: aqi != null ? getAqiLabel(aqi, tr) : "—",         unit: ""              },
+                      { icon: "air",          labelKey: "wind",       value: wind.value,                                       unit: wind.label       },
+                      { icon: "humidity_mid", labelKey: "humidity",   value: `${current.humidity}`,                            unit: "%"              },
+                      { icon: "compress",     labelKey: "pressure",   value: pres.value,                                       unit: pres.label       },
+                      { icon: "aq",           labelKey: "airQuality", value: aqi != null ? getAqiLabel(aqi, tr) : "—",         unit: ""               },
+                      { icon: "visibility",   labelKey: "visibility", value: vis.value,                                        unit: vis.label        },
                     ];
                   })().map((stat) => (
                     <div key={stat.labelKey} className="flex flex-col gap-2">
@@ -427,9 +499,8 @@ export default function HomePage() {
                 </div>
               </button>
 
-              <div className="flex items-center justify-between px-1">
+              <div className="px-1">
                 <h3 className="text-lg font-bold">{tr.favoriteCities}</h3>
-                <span className="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-white transition-colors">add_circle</span>
               </div>
 
               {favorites.map((fav, i) => {
@@ -460,17 +531,7 @@ export default function HomePage() {
             {hourly.length > 0 && (
               <section className="mb-8">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-xl font-bold tracking-tight">{tr.hourlyForecast}</h3>
-                    <button
-                      onClick={() => setUnits((u) => ({ ...u, time: u.time === "24h" ? "12h" : "24h" }))}
-                      className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-white/10 bg-surface-container/60 text-xs font-bold transition-colors hover:bg-surface-container-highest/60"
-                    >
-                      <span className={units.time === "12h" ? "text-primary" : "text-on-surface-variant"}>AM/PM</span>
-                      <span className="text-outline-variant">|</span>
-                      <span className={units.time === "24h" ? "text-primary" : "text-on-surface-variant"}>24h</span>
-                    </button>
-                  </div>
+                  <h3 className="text-xl font-bold tracking-tight">{tr.hourlyForecast}</h3>
                   <button className="text-sm text-primary font-medium hover:underline">{tr.seeDetailedMap}</button>
                 </div>
                 <div className="flex gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
@@ -493,6 +554,53 @@ export default function HomePage() {
                     );
                   })}
                 </div>
+
+                {/* Temperature curve */}
+                <TempCurve
+                  temps={hourly.map(h => fmtTempVal(h.temp, units.temp))}
+                  hours={hourly.map((h, i) => i === 0 ? (tr.now ?? "Now") : formatHour(h.dt, units.time))}
+                  nowLabel={tr.now ?? "Now"}
+                />
+
+                {/* Precipitation graph */}
+                {(() => {
+                  const maxRain = Math.max(...hourly.map(h => h.rain ?? 0), 0.1);
+                  return (
+                    <div className="mt-4 bg-surface-container/40 backdrop-blur-2xl border border-white/5 rounded-2xl p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="material-symbols-outlined text-blue-400 text-base">water_drop</span>
+                        <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">{tr.precipitation ?? "Précipitations"}</p>
+                      </div>
+                      <div className="flex items-end gap-1 h-16">
+                        {hourly.map((h, i) => {
+                          const mm = h.rain ?? 0;
+                          const heightPct = (mm / maxRain) * 100;
+                          const { value, label } = fmtPrecip(mm, units.precip);
+                          return (
+                            <div key={h.dt} className="flex-1 flex flex-col items-center gap-1 group relative">
+                              <div className="w-full flex items-end justify-center" style={{ height: "48px" }}>
+                                <div
+                                  className="w-full rounded-t-sm transition-all"
+                                  style={{
+                                    height: `${Math.max(heightPct, mm > 0 ? 8 : 2)}%`,
+                                    background: mm > 0 ? "rgb(96 165 250)" : "rgba(96,165,250,0.15)",
+                                  }}
+                                />
+                              </div>
+                              {mm > 0 && (
+                                <span className="text-[9px] text-blue-400 font-medium">{value}{label}</span>
+                              )}
+                              {mm === 0 && <span className="text-[9px] text-on-surface-variant/40">—</span>}
+                              <span className={`text-[9px] ${i === 0 ? "text-primary font-bold" : "text-on-surface-variant"}`}>
+                                {i === 0 ? tr.now : formatHour(h.dt, units.time)}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
               </section>
             )}
 
@@ -517,15 +625,21 @@ export default function HomePage() {
                       return (
                         <div key={f.dt} className="flex items-center justify-between py-2 group">
                           <span className="w-24 font-medium group-hover:text-primary transition-colors text-sm capitalize">{dayLabel}</span>
-                          <div className="flex items-center gap-3 w-36">
-                            <span className="material-symbols-outlined" style={{ color: fColor }}>{fIcon}</span>
-                            <span className="text-sm text-on-surface-variant">{tr[fCondKey] ?? f.weather[0].description}</span>
+                          <div className="flex items-center gap-2 w-36 min-w-0">
+                            <span className="material-symbols-outlined flex-shrink-0" style={{ color: fColor }}>{fIcon}</span>
+                            <span className="text-sm text-on-surface-variant truncate">{tr[fCondKey] ?? f.weather[0].description}</span>
                           </div>
-                          <div className="flex items-center gap-3 flex-1 max-w-[180px]">
-                            <span className="text-xs text-on-surface-variant w-8">{fmtTempVal(f.temp_min, units.temp)}°</span>
-                            <div className="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden relative">
-                              <div className="absolute inset-y-0 bg-gradient-to-r from-primary to-tertiary rounded-full"
-                                style={{ left: barLeft, right: barRight }} />
+                          <div className="flex items-center gap-2 flex-1 max-w-[200px]">
+                            <span className="text-xs text-on-surface-variant w-8 text-right">{fmtTempVal(f.temp_min, units.temp)}°</span>
+                            <div className="flex-1 h-1.5 bg-slate-700/60 rounded-full overflow-hidden relative">
+                              <div
+                                className="absolute inset-y-0 rounded-full"
+                                style={{
+                                  left: barLeft,
+                                  right: barRight,
+                                  background: `linear-gradient(to right, #60a5fa, #fbbf24)`,
+                                }}
+                              />
                             </div>
                             <span className="text-xs font-bold w-8">{fmtTempVal(f.temp_max, units.temp)}°</span>
                           </div>

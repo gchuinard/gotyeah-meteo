@@ -7,7 +7,7 @@ import { THEMES } from "@/lib/themes";
 import { apiUpdatePreferences } from "@/lib/api/user";
 import type {
   Units, TempUnit, WindUnit, PressureUnit, PrecipUnit,
-  VisUnit, TimeFormat, DateFormat, DistUnit, HeightUnit,
+  VisUnit, TimeFormat, DateFormat,
 } from "@/lib/units";
 
 interface Props {
@@ -168,7 +168,7 @@ export function SideNav({ units, onUnitsChange, onOpenLogin, onOpenRegister }: P
 
         {/* Preferences — scrollable */}
         <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-5" style={{ scrollbarWidth: "none" }}>
-          <p className="text-xs font-bold text-on-surface uppercase tracking-widest">Préférences</p>
+          <p className="text-xs font-bold text-on-surface uppercase tracking-widest">Unités</p>
 
           <UnitGroup<TempUnit>
             label="Température"
@@ -225,47 +225,32 @@ export function SideNav({ units, onUnitsChange, onOpenLogin, onOpenRegister }: P
             ]}
           />
 
-          <UnitGroup<TimeFormat>
-            label="Format horaire"
-            value={units.time}
-            onChange={(v) => set("time", v)}
-            options={[
-              { label: "24h",   value: "24h" },
-              { label: "AM/PM", value: "12h" },
-            ]}
-          />
+          <div className="border-t border-white/5 pt-5">
+            <p className="text-xs font-bold text-on-surface uppercase tracking-widest mb-5">Format</p>
 
-          <UnitGroup<DateFormat>
-            label="Format de date"
-            value={units.date}
-            onChange={(v) => set("date", v)}
-            options={[
-              { label: "JJ/MM/AAAA", value: "DD/MM/YYYY" },
-              { label: "MM/DD/YYYY", value: "MM/DD/YYYY" },
-              { label: "AAAA-MM-JJ", value: "YYYY-MM-DD" },
-            ]}
-          />
+            <div className="space-y-5">
+              <UnitGroup<TimeFormat>
+                label="Horaire"
+                value={units.time}
+                onChange={(v) => set("time", v)}
+                options={[
+                  { label: "24h",   value: "24h" },
+                  { label: "AM/PM", value: "12h" },
+                ]}
+              />
 
-          <UnitGroup<DistUnit>
-            label="Distance"
-            value={units.distance}
-            onChange={(v) => set("distance", v)}
-            options={[
-              { label: "km", value: "km" },
-              { label: "mi", value: "mi" },
-            ]}
-          />
-
-          <UnitGroup<HeightUnit>
-            label="Hauteur (nuages / neige)"
-            value={units.height}
-            onChange={(v) => set("height", v)}
-            options={[
-              { label: "cm", value: "cm" },
-              { label: "in", value: "in" },
-              { label: "ft", value: "ft" },
-            ]}
-          />
+              <UnitGroup<DateFormat>
+                label="Date"
+                value={units.date}
+                onChange={(v) => set("date", v)}
+                options={[
+                  { label: "JJ/MM/AAAA", value: "DD/MM/YYYY" },
+                  { label: "MM/DD/YYYY", value: "MM/DD/YYYY" },
+                  { label: "AAAA-MM-JJ", value: "YYYY-MM-DD" },
+                ]}
+              />
+            </div>
+          </div>
         </div>
 
       </aside>

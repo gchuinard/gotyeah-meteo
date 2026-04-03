@@ -39,6 +39,8 @@ export interface HourlyItem {
   dt: number;
   temp: number;
   weather: WeatherCondition[];
+  rain?: number;
+  pop: number;
 }
 
 export interface ForecastItem {
@@ -50,6 +52,7 @@ export interface ForecastItem {
   weather: WeatherCondition[];
   wind_speed: number;
   pop: number;
+  rain?: number;
 }
 
 export interface Forecast {
