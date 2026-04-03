@@ -43,6 +43,8 @@ class HourlyItem(BaseModel):
     dt: int
     temp: float
     weather: List[WeatherCondition]
+    rain: Optional[float] = None
+    pop: float = 0
 
 
 class ForecastItem(BaseModel):
@@ -54,6 +56,7 @@ class ForecastItem(BaseModel):
     weather: List[WeatherCondition]
     wind_speed: float
     pop: float
+    rain: Optional[float] = None
 
 
 class Forecast(BaseModel):
