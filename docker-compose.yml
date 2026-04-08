@@ -48,10 +48,13 @@ services:
       - weathernow-api
     networks:
       - weathernow-net
+      - nginx-proxy-manaer_default
 
 networks:
   weathernow-net:
     driver: bridge
+  nginx-proxy-manager_default:
+    external: true
 
 volumes:
   weathernow-db-data:
