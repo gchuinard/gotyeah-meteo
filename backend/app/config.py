@@ -6,7 +6,6 @@ Dépendances notables :
   - pydantic-settings : lecture et validation automatique des variables d'env / fichier .env
 """
 
-from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -41,15 +40,12 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
 
-    # Admin
-    admin_emails: list[str] = []
+    # Admin — emails séparés par des virgules : ADMIN_EMAILS=a@b.com,c@d.com
+    admin_emails: str = ""
 
-    @field_validator("admin_emails", mode="before")
-    @classmethod
-    def parse_admin_emails(cls, v: object) -> list[str]:
-        if isinstance(v, str):
-            return [e.strip() for e in v.split(",") if e.strip()]
-        return v  # type: ignore[return-value]
+    @property
+    def admin_emails_list(self) -> list[str]:
+        return [e.strip() for e in self.admin_emails.split(",") if e.strip()]
 
     model_config = SettingsConfigDict(
         env_file=".env",
