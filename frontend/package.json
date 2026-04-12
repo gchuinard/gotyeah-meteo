@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint app components lib types hooks context"
+    "lint": "next lint ."
   },
   "dependencies": {
     "next": "^16.0.0",
