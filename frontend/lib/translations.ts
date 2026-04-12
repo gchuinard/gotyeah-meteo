@@ -2,6 +2,19 @@ export type Lang = "EN" | "FR" | "ES" | "DE" | "JA";
 
 export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
   EN: {
+    // Auth
+    authLoginTitle: "Sign in", authRegisterTitle: "Create account",
+    authNoAccount: "No account yet?", authAlreadyAccount: "Already have an account?",
+    authSignUp: "Sign up", authSignIn: "Sign in",
+    authEmailLabel: "Email", authPasswordLabel: "Password", authUsernameLabel: "Username", authConfirmLabel: "Confirm password",
+    authCancel: "Cancel", authLoginBtn: "Sign in", authRegisterBtn: "Create account",
+    authUsernamePlaceholder: "Your username", authPasswordPlaceholder: "At least 8 characters", authConfirmPlaceholder: "Repeat password",
+    // Password rules
+    pwdMin8: "At least 8 characters", pwdUppercase: "1 uppercase letter", pwdNumber: "1 number", pwdSpecial: "1 special character", pwdMatch: "Passwords match",
+    // Errors
+    errEmailTaken: "This email is already in use.", errInvalidCredentials: "Incorrect email or password.", errPasswordNoMatch: "Passwords do not match.",
+    errPasswordWeak: "Password does not meet requirements.", errUsernameRequired: "Username is required (2–50 characters).",
+    errServer: "Server error, please try again.", errNetwork: "Network error. Check your connection.",
     // Nav
     navHome: "Home", navSearch: "Search", navFavorites: "Favorites", navAlerts: "Alerts",
     upgradeToPro: "Upgrade to Pro", upgradeDesc: "Get hyper-local accuracy and 14-day forecasts.", goPremium: "Go Premium",
@@ -29,6 +42,19 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     radarActive: "Radar: Active",
   },
   FR: {
+    // Auth
+    authLoginTitle: "Connexion", authRegisterTitle: "Inscription",
+    authNoAccount: "Pas encore de compte ?", authAlreadyAccount: "Déjà un compte ?",
+    authSignUp: "S'inscrire", authSignIn: "Se connecter",
+    authEmailLabel: "Email", authPasswordLabel: "Mot de passe", authUsernameLabel: "Pseudo", authConfirmLabel: "Confirmer le mot de passe",
+    authCancel: "Annuler", authLoginBtn: "Se connecter", authRegisterBtn: "Créer un compte",
+    authUsernamePlaceholder: "Votre pseudo", authPasswordPlaceholder: "8 caractères minimum", authConfirmPlaceholder: "Répétez le mot de passe",
+    // Password rules
+    pwdMin8: "8 caractères minimum", pwdUppercase: "1 lettre majuscule", pwdNumber: "1 chiffre", pwdSpecial: "1 caractère spécial", pwdMatch: "Mots de passe identiques",
+    // Errors
+    errEmailTaken: "Cet email est déjà utilisé.", errInvalidCredentials: "Email ou mot de passe incorrect.", errPasswordNoMatch: "Les mots de passe ne correspondent pas.",
+    errPasswordWeak: "Le mot de passe ne respecte pas les critères.", errUsernameRequired: "Pseudo requis (2 à 50 caractères).",
+    errServer: "Erreur serveur, réessayez.", errNetwork: "Erreur réseau. Vérifiez votre connexion.",
     navHome: "Accueil", navSearch: "Recherche", navFavorites: "Favoris", navAlerts: "Alertes",
     upgradeToPro: "Passer à Pro", upgradeDesc: "Précision hyper-locale et prévisions sur 14 jours.", goPremium: "Devenir Premium",
     searchPlaceholder: "Rechercher une ville...",
@@ -49,6 +75,19 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     radarActive: "Radar : Actif",
   },
   ES: {
+    // Auth
+    authLoginTitle: "Iniciar sesión", authRegisterTitle: "Crear cuenta",
+    authNoAccount: "¿Aún no tienes cuenta?", authAlreadyAccount: "¿Ya tienes cuenta?",
+    authSignUp: "Registrarse", authSignIn: "Iniciar sesión",
+    authEmailLabel: "Email", authPasswordLabel: "Contraseña", authUsernameLabel: "Usuario", authConfirmLabel: "Confirmar contraseña",
+    authCancel: "Cancelar", authLoginBtn: "Iniciar sesión", authRegisterBtn: "Crear cuenta",
+    authUsernamePlaceholder: "Tu nombre de usuario", authPasswordPlaceholder: "Mínimo 8 caracteres", authConfirmPlaceholder: "Repite la contraseña",
+    // Password rules
+    pwdMin8: "Mínimo 8 caracteres", pwdUppercase: "1 letra mayúscula", pwdNumber: "1 número", pwdSpecial: "1 carácter especial", pwdMatch: "Las contraseñas coinciden",
+    // Errors
+    errEmailTaken: "Este email ya está en uso.", errInvalidCredentials: "Email o contraseña incorrectos.", errPasswordNoMatch: "Las contraseñas no coinciden.",
+    errPasswordWeak: "La contraseña no cumple los requisitos.", errUsernameRequired: "Usuario requerido (2–50 caracteres).",
+    errServer: "Error del servidor, inténtalo de nuevo.", errNetwork: "Error de red. Verifica tu conexión.",
     navHome: "Inicio", navSearch: "Buscar", navFavorites: "Favoritos", navAlerts: "Alertas",
     upgradeToPro: "Mejorar a Pro", upgradeDesc: "Precisión hiper-local y pronósticos de 14 días.", goPremium: "Ir a Premium",
     searchPlaceholder: "Buscar ciudades...",
@@ -69,6 +108,19 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     radarActive: "Radar: Activo",
   },
   DE: {
+    // Auth
+    authLoginTitle: "Anmelden", authRegisterTitle: "Konto erstellen",
+    authNoAccount: "Noch kein Konto?", authAlreadyAccount: "Bereits ein Konto?",
+    authSignUp: "Registrieren", authSignIn: "Anmelden",
+    authEmailLabel: "E-Mail", authPasswordLabel: "Passwort", authUsernameLabel: "Benutzername", authConfirmLabel: "Passwort bestätigen",
+    authCancel: "Abbrechen", authLoginBtn: "Anmelden", authRegisterBtn: "Konto erstellen",
+    authUsernamePlaceholder: "Ihr Benutzername", authPasswordPlaceholder: "Mindestens 8 Zeichen", authConfirmPlaceholder: "Passwort wiederholen",
+    // Password rules
+    pwdMin8: "Mindestens 8 Zeichen", pwdUppercase: "1 Großbuchstabe", pwdNumber: "1 Zahl", pwdSpecial: "1 Sonderzeichen", pwdMatch: "Passwörter stimmen überein",
+    // Errors
+    errEmailTaken: "Diese E-Mail wird bereits verwendet.", errInvalidCredentials: "E-Mail oder Passwort falsch.", errPasswordNoMatch: "Passwörter stimmen nicht überein.",
+    errPasswordWeak: "Passwort erfüllt nicht die Anforderungen.", errUsernameRequired: "Benutzername erforderlich (2–50 Zeichen).",
+    errServer: "Serverfehler, bitte erneut versuchen.", errNetwork: "Netzwerkfehler. Verbindung prüfen.",
     navHome: "Startseite", navSearch: "Suche", navFavorites: "Favoriten", navAlerts: "Warnungen",
     upgradeToPro: "Auf Pro upgraden", upgradeDesc: "Hyper-lokale Genauigkeit und 14-Tage-Vorhersagen.", goPremium: "Premium werden",
     searchPlaceholder: "Städte suchen...",
@@ -89,6 +141,19 @@ export const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     radarActive: "Radar: Aktiv",
   },
   JA: {
+    // Auth
+    authLoginTitle: "ログイン", authRegisterTitle: "アカウント作成",
+    authNoAccount: "アカウントをお持ちでないですか？", authAlreadyAccount: "すでにアカウントをお持ちですか？",
+    authSignUp: "登録する", authSignIn: "ログイン",
+    authEmailLabel: "メールアドレス", authPasswordLabel: "パスワード", authUsernameLabel: "ユーザー名", authConfirmLabel: "パスワード確認",
+    authCancel: "キャンセル", authLoginBtn: "ログイン", authRegisterBtn: "アカウント作成",
+    authUsernamePlaceholder: "ユーザー名を入力", authPasswordPlaceholder: "8文字以上", authConfirmPlaceholder: "パスワードを再入力",
+    // Password rules
+    pwdMin8: "8文字以上", pwdUppercase: "大文字1文字以上", pwdNumber: "数字1文字以上", pwdSpecial: "特殊文字1文字以上", pwdMatch: "パスワードが一致",
+    // Errors
+    errEmailTaken: "このメールアドレスは既に使用されています。", errInvalidCredentials: "メールアドレスまたはパスワードが正しくありません。", errPasswordNoMatch: "パスワードが一致しません。",
+    errPasswordWeak: "パスワードが要件を満たしていません。", errUsernameRequired: "ユーザー名が必要です（2〜50文字）。",
+    errServer: "サーバーエラー。再試行してください。", errNetwork: "ネットワークエラー。接続を確認してください。",
     navHome: "ホーム", navSearch: "検索", navFavorites: "お気に入り", navAlerts: "アラート",
     upgradeToPro: "Proへアップグレード", upgradeDesc: "超ローカル精度と14日間予報。", goPremium: "プレミアムへ",
     searchPlaceholder: "都市を検索...",

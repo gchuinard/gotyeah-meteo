@@ -163,17 +163,34 @@ export default function HomePage() {
   const [authUsername, setAuthUsername] = useState("");
   const [authError, setAuthError]       = useState<string | null>(null);
   const [authLoading, setAuthLoading]   = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm]   = useState(false);
 
-  function openLogin()    { setAuthModal("login");    setAuthEmail(""); setAuthPassword(""); setAuthConfirm(""); setAuthUsername(""); setAuthError(null); }
-  function openRegister() { setAuthModal("register"); setAuthEmail(""); setAuthPassword(""); setAuthConfirm(""); setAuthUsername(""); setAuthError(null); }
+  function resetAuth() { setAuthEmail(""); setAuthPassword(""); setAuthConfirm(""); setAuthUsername(""); setAuthError(null); setShowPassword(false); setShowConfirm(false); }
+  function openLogin()    { setAuthModal("login");    resetAuth(); }
+  function openRegister() { setAuthModal("register"); resetAuth(); }
   function closeAuth()    { setAuthModal(null); }
+
+  function mapApiError(msg: string, t: Record<string, string>): string {
+    if (msg.includes("already registered") || msg.includes("already in use")) return t.errEmailTaken;
+    if (msg.includes("Could not validate") || msg.includes("401") || msg.includes("Unauthorized")) return t.errInvalidCredentials;
+    if (msg.includes("NetworkError") || msg.includes("Failed to fetch") || msg.includes("network")) return t.errNetwork;
+    if (msg.includes("422") || msg.includes("Unprocessable")) return t.errPasswordWeak;
+    return t.errServer;
+  }
 
   async function handleAuthSubmit(e: React.FormEvent) {
     e.preventDefault();
     setAuthError(null);
+    const t = TRANSLATIONS[lang];
     if (authModal === "register") {
-      if (authPassword !== authConfirm) { setAuthError("Les mots de passe ne correspondent pas"); return; }
-      if (authPassword.length < 8)      { setAuthError("Minimum 8 caractères"); return; }
+      const hasMin = authPassword.length >= 8;
+      const hasUpper = /[A-Z]/.test(authPassword);
+      const hasNum = /[0-9]/.test(authPassword);
+      const hasSpecial = /[^a-zA-Z0-9]/.test(authPassword);
+      if (!hasMin || !hasUpper || !hasNum || !hasSpecial) { setAuthError(t.errPasswordWeak); return; }
+      if (authPassword !== authConfirm) { setAuthError(t.errPasswordNoMatch); return; }
+      if (authUsername.trim().length < 2) { setAuthError(t.errUsernameRequired); return; }
     }
     setAuthLoading(true);
     try {
@@ -181,7 +198,8 @@ export default function HomePage() {
       if (authModal === "register") await register(authEmail, authPassword, authUsername);
       closeAuth();
     } catch (err: unknown) {
-      setAuthError(err instanceof Error ? err.message : "Erreur");
+      const raw = err instanceof Error ? err.message : "";
+      setAuthError(mapApiError(raw, TRANSLATIONS[lang]));
     } finally {
       setAuthLoading(false);
     }
@@ -673,120 +691,135 @@ export default function HomePage() {
       </div>
 
       {/* Auth modal (login / register) */}
-      {authModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-sm bg-surface-container-lowest border border-white/10 rounded-3xl p-8 shadow-2xl">
+      {authModal && (() => {
+        const t = TRANSLATIONS[lang];
+        const isRegister = authModal === "register";
+        const baseInput = "w-full bg-surface-container-high rounded-xl px-4 py-3 pr-11 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 transition-all border";
 
-            <h2 className="text-xl font-bold mb-1">
-              {authModal === "login" ? "Connexion" : "Inscription"}
-            </h2>
-            <p className="text-xs text-on-surface-variant mb-6">
-              {authModal === "login" ? (
-                <>Pas encore de compte ?{" "}
-                  <button onClick={openRegister} className="text-primary hover:underline font-semibold">S&apos;inscrire</button>
-                </>
-              ) : (
-                <>Déjà un compte ?{" "}
-                  <button onClick={openLogin} className="text-primary hover:underline font-semibold">Se connecter</button>
-                </>
-              )}
-            </p>
+        // Password rule checks
+        const hasMin     = authPassword.length >= 8;
+        const hasUpper   = /[A-Z]/.test(authPassword);
+        const hasNum     = /[0-9]/.test(authPassword);
+        const hasSpecial = /[^a-zA-Z0-9]/.test(authPassword);
+        const pwdOk      = hasMin && hasUpper && hasNum && hasSpecial;
+        const confirmOk  = authConfirm.length > 0 && authConfirm === authPassword;
+        const confirmBad = authConfirm.length > 0 && authConfirm !== authPassword;
 
-            <form onSubmit={handleAuthSubmit} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-xs text-on-surface-variant font-semibold uppercase tracking-wider">Email</label>
-                <input
-                  type="email"
-                  required
-                  value={authEmail}
-                  onChange={(e) => setAuthEmail(e.target.value)}
-                  placeholder="vous@example.com"
-                  className="bg-surface-container-high border border-white/10 rounded-xl px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
-                />
-              </div>
+        const Rule = ({ ok, label }: { ok: boolean; label: string }) => (
+          <span className={`flex items-center gap-1 text-[11px] transition-colors ${authPassword.length === 0 ? "text-on-surface-variant/50" : ok ? "text-green-400" : "text-red-400"}`}>
+            <span className="material-symbols-outlined text-[13px]">{ok ? "check_circle" : "cancel"}</span>
+            {label}
+          </span>
+        );
 
-              {authModal === "register" && (
+        return (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="w-full max-w-sm bg-surface-container-lowest border border-white/10 rounded-3xl p-8 shadow-2xl">
+
+              <h2 className="text-xl font-bold mb-1">{isRegister ? t.authRegisterTitle : t.authLoginTitle}</h2>
+              <p className="text-xs text-on-surface-variant mb-6">
+                {isRegister ? (
+                  <>{t.authAlreadyAccount}{" "}<button onClick={openLogin} className="text-primary hover:underline font-semibold">{t.authSignIn}</button></>
+                ) : (
+                  <>{t.authNoAccount}{" "}<button onClick={openRegister} className="text-primary hover:underline font-semibold">{t.authSignUp}</button></>
+                )}
+              </p>
+
+              <form onSubmit={handleAuthSubmit} className="flex flex-col gap-4">
+
+                {/* Email */}
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs text-on-surface-variant font-semibold uppercase tracking-wider">Pseudo</label>
+                  <label className="text-xs text-on-surface-variant font-semibold uppercase tracking-wider">{t.authEmailLabel}</label>
                   <input
-                    type="text"
-                    required
-                    minLength={2}
-                    maxLength={50}
-                    value={authUsername}
-                    onChange={(e) => setAuthUsername(e.target.value)}
-                    placeholder="Votre pseudo"
+                    type="email" required value={authEmail} onChange={(e) => setAuthEmail(e.target.value)}
+                    placeholder="vous@example.com"
                     className="bg-surface-container-high border border-white/10 rounded-xl px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
                   />
                 </div>
-              )}
 
-              {(() => {
-                const pwdInvalid = authModal === "register" && authPassword.length > 0 && authPassword.length < 8;
-                const confirmInvalid = authModal === "register" && authConfirm.length > 0 && authConfirm !== authPassword;
-                const baseInput = "bg-surface-container-high rounded-xl px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 transition-all border";
-                return (
-                  <>
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs text-on-surface-variant font-semibold uppercase tracking-wider">Mot de passe</label>
-                        {pwdInvalid && <span className="text-[10px] text-red-400 font-medium">8 caractères minimum</span>}
-                      </div>
-                      <input
-                        type="password"
-                        required
-                        value={authPassword}
-                        onChange={(e) => setAuthPassword(e.target.value)}
-                        placeholder={authModal === "register" ? "8 caractères minimum" : "••••••••"}
-                        className={`${baseInput} ${pwdInvalid ? "border-red-500/60 focus:ring-red-500/30" : authPassword.length >= 8 ? "border-green-500/60 focus:ring-green-500/30" : "border-white/10 focus:ring-primary/30"}`}
-                      />
+                {/* Username (register only) */}
+                {isRegister && (
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-on-surface-variant font-semibold uppercase tracking-wider">{t.authUsernameLabel}</label>
+                    <input
+                      type="text" required minLength={2} maxLength={50} value={authUsername} onChange={(e) => setAuthUsername(e.target.value)}
+                      placeholder={t.authUsernamePlaceholder}
+                      className="bg-surface-container-high border border-white/10 rounded-xl px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+                    />
+                  </div>
+                )}
+
+                {/* Password */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-on-surface-variant font-semibold uppercase tracking-wider">{t.authPasswordLabel}</label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"} required value={authPassword} onChange={(e) => setAuthPassword(e.target.value)}
+                      placeholder={isRegister ? t.authPasswordPlaceholder : "••••••••"}
+                      className={`${baseInput} ${isRegister ? (authPassword.length === 0 ? "border-white/10 focus:ring-primary/30" : pwdOk ? "border-green-500/60 focus:ring-green-500/30" : "border-red-500/60 focus:ring-red-500/30") : "border-white/10 focus:ring-primary/30"}`}
+                    />
+                    <button type="button" onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors">
+                      <span className="material-symbols-outlined text-lg">{showPassword ? "visibility_off" : "visibility"}</span>
+                    </button>
+                  </div>
+                  {/* Checklist */}
+                  {isRegister && (
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 mt-1.5">
+                      <Rule ok={hasMin}     label={t.pwdMin8} />
+                      <Rule ok={hasUpper}   label={t.pwdUppercase} />
+                      <Rule ok={hasNum}     label={t.pwdNumber} />
+                      <Rule ok={hasSpecial} label={t.pwdSpecial} />
                     </div>
+                  )}
+                </div>
 
-                    {authModal === "register" && (
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center justify-between">
-                          <label className="text-xs text-on-surface-variant font-semibold uppercase tracking-wider">Confirmer</label>
-                          {confirmInvalid && <span className="text-[10px] text-red-400 font-medium">Ne correspond pas</span>}
-                        </div>
-                        <input
-                          type="password"
-                          required
-                          value={authConfirm}
-                          onChange={(e) => setAuthConfirm(e.target.value)}
-                          placeholder="••••••••"
-                          className={`${baseInput} ${confirmInvalid ? "border-red-500/60 focus:ring-red-500/30" : authConfirm.length > 0 && authConfirm === authPassword ? "border-green-500/60 focus:ring-green-500/30" : "border-white/10 focus:ring-primary/30"}`}
-                        />
-                      </div>
+                {/* Confirm password (register only) */}
+                {isRegister && (
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-on-surface-variant font-semibold uppercase tracking-wider">{t.authConfirmLabel}</label>
+                    <div className="relative">
+                      <input
+                        type={showConfirm ? "text" : "password"} required value={authConfirm} onChange={(e) => setAuthConfirm(e.target.value)}
+                        placeholder={t.authConfirmPlaceholder}
+                        className={`${baseInput} ${confirmOk ? "border-green-500/60 focus:ring-green-500/30" : confirmBad ? "border-red-500/60 focus:ring-red-500/30" : "border-white/10 focus:ring-primary/30"}`}
+                      />
+                      <button type="button" onClick={() => setShowConfirm((v) => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors">
+                        <span className="material-symbols-outlined text-lg">{showConfirm ? "visibility_off" : "visibility"}</span>
+                      </button>
+                    </div>
+                    {authConfirm.length > 0 && (
+                      <span className={`flex items-center gap-1 text-[11px] mt-0.5 transition-colors ${confirmOk ? "text-green-400" : "text-red-400"}`}>
+                        <span className="material-symbols-outlined text-[13px]">{confirmOk ? "check_circle" : "cancel"}</span>
+                        {confirmOk ? t.pwdMatch : t.errPasswordNoMatch}
+                      </span>
                     )}
-                  </>
-                );
-              })()}
+                  </div>
+                )}
 
-              {authError && (
-                <p className="text-sm text-red-400 bg-red-400/10 rounded-xl px-4 py-2.5">{authError}</p>
-              )}
+                {authError && (
+                  <div className="flex items-start gap-2 text-sm text-red-400 bg-red-400/10 rounded-xl px-4 py-2.5">
+                    <span className="material-symbols-outlined text-base mt-0.5 flex-shrink-0">error</span>
+                    {authError}
+                  </div>
+                )}
 
-              <div className="flex gap-3 mt-2">
-                <button
-                  type="button"
-                  onClick={closeAuth}
-                  className="flex-1 py-2.5 rounded-xl border border-white/10 text-sm font-semibold text-on-surface-variant hover:bg-white/5 transition-colors"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={authLoading}
-                  className="flex-1 py-2.5 rounded-xl bg-primary text-on-primary text-sm font-bold hover:brightness-110 transition-all disabled:opacity-50"
-                >
-                  {authLoading ? "…" : authModal === "login" ? "Se connecter" : "Créer un compte"}
-                </button>
-              </div>
-            </form>
-
+                <div className="flex gap-3 mt-2">
+                  <button type="button" onClick={closeAuth}
+                    className="flex-1 py-2.5 rounded-xl border border-white/10 text-sm font-semibold text-on-surface-variant hover:bg-white/5 transition-colors">
+                    {t.authCancel}
+                  </button>
+                  <button type="submit" disabled={authLoading}
+                    className="flex-1 py-2.5 rounded-xl bg-primary text-on-primary text-sm font-bold hover:brightness-110 transition-all disabled:opacity-50">
+                    {authLoading ? "…" : isRegister ? t.authRegisterBtn : t.authLoginBtn}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
     </div>
   );
