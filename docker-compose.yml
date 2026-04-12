@@ -48,13 +48,10 @@ services:
       - weathernow-api
     networks:
       - weathernow-net
-      - nginx-proxy-manaer_default
 
 networks:
   weathernow-net:
-    driver: bridge
-  npm_net:
-    name: npm_net
+    name: weathernow-net
     external: true
 
 volumes:
