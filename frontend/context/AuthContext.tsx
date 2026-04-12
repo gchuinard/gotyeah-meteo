@@ -175,6 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(LS_ACCESS);
     localStorage.removeItem(LS_REFRESH);
     setState({ user: null, accessToken: null, refreshToken: null, loading: false });
+    window.location.reload();
   }, []);
 
   /**
