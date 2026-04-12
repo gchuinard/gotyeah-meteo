@@ -7,7 +7,7 @@ pytestmark = pytest.mark.asyncio
 async def test_register(client: AsyncClient):
     resp = await client.post(
         "/auth/register",
-        json={"email": "test@example.com", "password": "password123"},
+        json={"email": "test@example.com", "password": "password123", "username": "testuser"},
     )
     assert resp.status_code == 201
     data = resp.json()
@@ -19,11 +19,11 @@ async def test_register(client: AsyncClient):
 async def test_register_duplicate_email(client: AsyncClient):
     await client.post(
         "/auth/register",
-        json={"email": "dup@example.com", "password": "password123"},
+        json={"email": "dup@example.com", "password": "password123", "username": "dupuser"},
     )
     resp = await client.post(
         "/auth/register",
-        json={"email": "dup@example.com", "password": "password123"},
+        json={"email": "dup@example.com", "password": "password123", "username": "dupuser2"},
     )
     assert resp.status_code == 400
     assert resp.json()["detail"] == "Email already registered"
@@ -32,7 +32,7 @@ async def test_register_duplicate_email(client: AsyncClient):
 async def test_login_success(client: AsyncClient):
     await client.post(
         "/auth/register",
-        json={"email": "login@example.com", "password": "password123"},
+        json={"email": "login@example.com", "password": "password123", "username": "loginuser"},
     )
     resp = await client.post(
         "/auth/login",
@@ -47,7 +47,7 @@ async def test_login_success(client: AsyncClient):
 async def test_login_wrong_password(client: AsyncClient):
     await client.post(
         "/auth/register",
-        json={"email": "wrong@example.com", "password": "password123"},
+        json={"email": "wrong@example.com", "password": "password123", "username": "wronguser"},
     )
     resp = await client.post(
         "/auth/login",
@@ -59,7 +59,7 @@ async def test_login_wrong_password(client: AsyncClient):
 async def test_me_valid_token(client: AsyncClient):
     reg = await client.post(
         "/auth/register",
-        json={"email": "me@example.com", "password": "password123"},
+        json={"email": "me@example.com", "password": "password123", "username": "meuser"},
     )
     token = reg.json()["access_token"]
     resp = await client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
@@ -79,7 +79,7 @@ async def test_me_invalid_token(client: AsyncClient):
 async def test_refresh(client: AsyncClient):
     reg = await client.post(
         "/auth/register",
-        json={"email": "refresh@example.com", "password": "password123"},
+        json={"email": "refresh@example.com", "password": "password123", "username": "refreshuser"},
     )
     refresh_token = reg.json()["refresh_token"]
     resp = await client.post("/auth/refresh", json={"refresh_token": refresh_token})
@@ -90,7 +90,7 @@ async def test_refresh(client: AsyncClient):
 async def test_logout(client: AsyncClient):
     reg = await client.post(
         "/auth/register",
-        json={"email": "logout@example.com", "password": "password123"},
+        json={"email": "logout@example.com", "password": "password123", "username": "logoutuser"},
     )
     refresh_token = reg.json()["refresh_token"]
     resp = await client.post("/auth/logout", json={"refresh_token": refresh_token})
