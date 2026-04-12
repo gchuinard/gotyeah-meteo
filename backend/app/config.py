@@ -6,6 +6,7 @@ Dépendances notables :
   - pydantic-settings : lecture et validation automatique des variables d'env / fichier .env
 """
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,6 +22,7 @@ class Settings(BaseSettings):
         algorithm (str): Algorithme de signature JWT (HS256 par défaut).
         access_token_expire_minutes (int): Durée de vie de l'access token en minutes.
         refresh_token_expire_days (int): Durée de vie du refresh token en jours.
+        admin_emails (list[str]): Emails autorisés à accéder au back-office admin.
     """
 
     # Environnement
@@ -38,6 +40,16 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
+
+    # Admin
+    admin_emails: list[str] = []
+
+    @field_validator("admin_emails", mode="before")
+    @classmethod
+    def parse_admin_emails(cls, v: object) -> list[str]:
+        if isinstance(v, str):
+            return [e.strip() for e in v.split(",") if e.strip()]
+        return v  # type: ignore[return-value]
 
     model_config = SettingsConfigDict(
         env_file=".env",

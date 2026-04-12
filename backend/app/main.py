@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(name)s - %(
 _auth_available = False
 _auth_error: Exception | None = None
 try:
-    from app.routers import auth, user
+    from app.routers import auth, user, admin
     _auth_available = True
 except Exception as exc:
     _auth_error = exc
@@ -55,7 +55,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["Content-Type", "Authorization"],
 )
 
@@ -67,6 +67,7 @@ app.include_router(weather.router, prefix="/weather", tags=["weather"])
 if _auth_available:
     app.include_router(auth.router, prefix="/auth", tags=["auth"])
     app.include_router(user.router, prefix="/user", tags=["user"])
+    app.include_router(admin.router, prefix="/admin", tags=["admin"])
 
 
 @app.get("/health", tags=["meta"])
