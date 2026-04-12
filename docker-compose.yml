@@ -32,7 +32,6 @@ services:
         condition: service_healthy
     networks:
       - weathernow-net
-      - npm_net
 
   weathernow-front:
     build:
@@ -49,13 +48,10 @@ services:
       - weathernow-api
     networks:
       - weathernow-net
-      - npm_net
 
 networks:
   weathernow-net:
-    driver: bridge
-  npm_net:
-    name: npm_net
+    name: weathernow-net
     external: true
 
 volumes:
