@@ -11,6 +11,7 @@ import { DEFAULT_UNITS, fmtTempVal, fmtWind, fmtPressure, fmtVis, fmtDate, fmtPr
 import type { CurrentWeather } from "@/types/weather";
 import { useAuth } from "@/context/AuthContext";
 import { apiGetFavorites, apiAddFavorite, apiDeleteFavorite } from "@/lib/api/user";
+import { apiAdminPing } from "@/lib/api/admin";
 
 const LOCALE_MAP: Record<Lang, string> = {
   EN: "en-US", FR: "fr-FR", ES: "es-ES", DE: "de-DE", JA: "ja-JP",
@@ -152,6 +153,7 @@ export default function HomePage() {
   const [favorites, setFavorites] = useState<FavoriteItem[]>(DEFAULT_FAVORITES);
   const [favData, setFavData]     = useState<(CurrentWeather | null)[]>([null, null]);
   const [units, setUnits]         = useState<Units>(DEFAULT_UNITS);
+  const [isAdmin, setIsAdmin]     = useState(false);
 
   // Auth modals
   const [authModal, setAuthModal] = useState<"login" | "register" | null>(null);
@@ -187,6 +189,12 @@ export default function HomePage() {
 
   const { current, forecast, loading, error, search, searchByCoords } = useWeather();
   const tr = TRANSLATIONS[lang];
+
+  // Check admin status when user logs in
+  useEffect(() => {
+    if (!user) { setIsAdmin(false); return; }
+    getToken().then((token) => apiAdminPing(token)).then(setIsAdmin).catch(() => setIsAdmin(false));
+  }, [user]);
 
   // Load favorites from API when authenticated
   useEffect(() => {
@@ -337,6 +345,15 @@ export default function HomePage() {
               )}
             </div>
 
+            {isAdmin && (
+              <a
+                href="/admin"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+              >
+                <span className="material-symbols-outlined text-sm">admin_panel_settings</span>
+                Admin
+              </a>
+            )}
             {user && (
               <div className="w-10 h-10 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-sm font-bold text-primary select-none">
                 {user.email[0].toUpperCase()}

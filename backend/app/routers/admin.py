@@ -74,6 +74,11 @@ class TablesOverview(BaseModel):
 # Endpoints
 # ---------------------------------------------------------------------------
 
+@router.get("/ping")
+async def ping(_: User = Depends(require_admin)) -> dict:
+    return {"is_admin": True}
+
+
 @router.get("/users", response_model=list[AdminUserOut])
 async def list_users(
     _: User = Depends(require_admin),
@@ -128,6 +133,20 @@ async def delete_user(
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     await db.delete(user)
+    await db.commit()
+
+
+@router.delete("/favorites/{favorite_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_favorite(
+    favorite_id: str,
+    _: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    result = await db.execute(select(Favorite).where(Favorite.id == favorite_id))
+    fav = result.scalar_one_or_none()
+    if fav is None:
+        raise HTTPException(status_code=404, detail="Favorite not found")
+    await db.delete(fav)
     await db.commit()
 
 

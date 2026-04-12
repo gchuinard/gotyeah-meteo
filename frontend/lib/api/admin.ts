@@ -38,6 +38,24 @@ async function handleResponse<T>(res: Response): Promise<T> {
   return res.json();
 }
 
+export async function apiAdminPing(token: string): Promise<boolean> {
+  const res = await fetch(`${API_URL}/admin/ping`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.ok;
+}
+
+export async function apiAdminDeleteFavorite(token: string, favoriteId: string): Promise<void> {
+  const res = await fetch(`${API_URL}/admin/favorites/${favoriteId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail ?? `HTTP ${res.status}`);
+  }
+}
+
 export async function apiAdminGetUsers(token: string): Promise<AdminUser[]> {
   const res = await fetch(`${API_URL}/admin/users`, {
     headers: { Authorization: `Bearer ${token}` },

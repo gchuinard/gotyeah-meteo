@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import {
   apiAdminGetUsers,
   apiAdminDeleteUser,
+  apiAdminDeleteFavorite,
   apiAdminGetTables,
   type AdminUser,
   type TablesOverview,
@@ -53,6 +54,47 @@ export default function AdminPage() {
       const token = await getToken();
       await apiAdminDeleteUser(token, userId);
       setUsers((prev) => prev.filter((u) => u.id !== userId));
+    } catch (e: unknown) {
+      alert(`Erreur : ${e instanceof Error ? e.message : "inconnue"}`);
+    }
+  };
+
+  const handleDeleteFavorite = async (userId: string, favoriteId: string, cityName: string) => {
+    if (!confirm(`Supprimer le favori "${cityName}" ?`)) return;
+    try {
+      const token = await getToken();
+      await apiAdminDeleteFavorite(token, favoriteId);
+      setUsers((prev) => prev.map((u) =>
+        u.id === userId ? { ...u, favorites: u.favorites.filter((f) => f.id !== favoriteId) } : u
+      ));
+      if (tables) {
+        setTables((prev) => prev ? {
+          ...prev,
+          favorites: { ...prev.favorites, data: prev.favorites.data.filter((r) => r.id !== favoriteId), total: prev.favorites.total - 1 },
+        } : prev);
+      }
+    } catch (e: unknown) {
+      alert(`Erreur : ${e instanceof Error ? e.message : "inconnue"}`);
+    }
+  };
+
+  const handleDeleteFromTable = async (table: keyof TablesOverview, id: string) => {
+    const label = table === "users" ? "ce compte" : table === "favorites" ? "ce favori" : null;
+    if (!label) return;
+    if (!confirm(`Supprimer ${label} (id: ${id}) ?`)) return;
+    try {
+      const token = await getToken();
+      if (table === "users") {
+        await apiAdminDeleteUser(token, id);
+        setUsers((prev) => prev.filter((u) => u.id !== id));
+      } else if (table === "favorites") {
+        await apiAdminDeleteFavorite(token, id);
+        setUsers((prev) => prev.map((u) => ({ ...u, favorites: u.favorites.filter((f) => f.id !== id) })));
+      }
+      setTables((prev) => prev ? {
+        ...prev,
+        [table]: { ...prev[table], data: prev[table].data.filter((r) => r.id !== id), total: prev[table].total - 1 },
+      } : prev);
     } catch (e: unknown) {
       alert(`Erreur : ${e instanceof Error ? e.message : "inconnue"}`);
     }
@@ -167,10 +209,19 @@ export default function AdminPage() {
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                         {u.favorites.map((f) => (
-                          <div key={f.id} className="bg-surface/50 rounded-xl p-3 text-sm">
-                            <p className="font-medium">{f.city_name}</p>
-                            <p className="text-xs text-on-surface-variant">{f.lat.toFixed(4)}, {f.lon.toFixed(4)}</p>
-                            <p className="text-xs text-on-surface-variant">Pos. {f.position} · {new Date(f.created_at).toLocaleDateString("fr-FR")}</p>
+                          <div key={f.id} className="bg-surface/50 rounded-xl p-3 text-sm flex items-start justify-between gap-2">
+                            <div>
+                              <p className="font-medium">{f.city_name}</p>
+                              <p className="text-xs text-on-surface-variant">{f.lat.toFixed(4)}, {f.lon.toFixed(4)}</p>
+                              <p className="text-xs text-on-surface-variant">Pos. {f.position} · {new Date(f.created_at).toLocaleDateString("fr-FR")}</p>
+                            </div>
+                            <button
+                              onClick={() => handleDeleteFavorite(u.id, f.id, f.city_name)}
+                              className="p-1 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors flex-shrink-0"
+                              title="Supprimer ce favori"
+                            >
+                              <span className="material-symbols-outlined text-base">delete</span>
+                            </button>
                           </div>
                         ))}
                       </div>
@@ -220,6 +271,9 @@ export default function AdminPage() {
                             {col}
                           </th>
                         ))}
+                        {(activeTable === "users" || activeTable === "favorites") && (
+                          <th className="px-4 py-3" />
+                        )}
                       </tr>
                     </thead>
                     <tbody>
@@ -230,6 +284,17 @@ export default function AdminPage() {
                               {row[col] ?? <span className="opacity-40">null</span>}
                             </td>
                           ))}
+                          {(activeTable === "users" || activeTable === "favorites") && (
+                            <td className="px-2 py-2">
+                              <button
+                                onClick={() => row.id && handleDeleteFromTable(activeTable, row.id)}
+                                className="p-1 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors"
+                                title="Supprimer"
+                              >
+                                <span className="material-symbols-outlined text-base">delete</span>
+                              </button>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
