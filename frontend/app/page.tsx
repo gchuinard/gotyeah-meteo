@@ -380,12 +380,76 @@ export default function HomePage() {
           </div>
         </header>
 
-        {/* Loading */}
+        {/* Loading skeleton */}
         {loading && (
-          <div className="flex items-center justify-center h-[calc(100vh-5rem)] pt-20">
-            <div className="flex flex-col items-center gap-4">
-              <span className="material-symbols-outlined text-primary text-5xl animate-pulse">cloud</span>
-              <p className="text-on-surface-variant text-sm">{tr.loading}</p>
+          <div className="pt-24 px-4 lg:px-8 pb-12 animate-pulse">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+
+              {/* Hero skeleton */}
+              <div className="lg:col-span-2 bg-surface-variant/20 rounded-3xl p-8 flex flex-col gap-6 min-h-[340px]">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2">
+                    <div className="h-5 w-28 bg-surface-variant/50 rounded-full" />
+                    <div className="h-10 w-48 bg-surface-variant/50 rounded-full" />
+                    <div className="h-4 w-36 bg-surface-variant/30 rounded-full" />
+                  </div>
+                  <div className="w-20 h-20 bg-surface-variant/40 rounded-full" />
+                </div>
+                <div className="h-16 w-32 bg-surface-variant/50 rounded-2xl" />
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-auto">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="bg-surface-variant/30 rounded-2xl p-4 flex flex-col gap-2">
+                      <div className="h-3 w-16 bg-surface-variant/50 rounded-full" />
+                      <div className="h-5 w-12 bg-surface-variant/50 rounded-full" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Favorites skeleton */}
+              <div className="flex flex-col gap-4">
+                <div className="h-10 w-full bg-surface-variant/20 rounded-2xl" />
+                <div className="bg-surface-variant/20 rounded-3xl p-5 flex flex-col gap-3">
+                  <div className="h-4 w-24 bg-surface-variant/40 rounded-full mb-1" />
+                  {[...Array(2)].map((_, i) => (
+                    <div key={i} className="flex items-center justify-between bg-surface-variant/20 rounded-2xl p-4">
+                      <div className="space-y-1.5">
+                        <div className="h-4 w-20 bg-surface-variant/50 rounded-full" />
+                        <div className="h-3 w-14 bg-surface-variant/30 rounded-full" />
+                      </div>
+                      <div className="h-7 w-12 bg-surface-variant/40 rounded-full" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Hourly forecast skeleton */}
+            <div className="bg-surface-variant/20 rounded-3xl p-6 mb-6">
+              <div className="h-4 w-36 bg-surface-variant/40 rounded-full mb-5" />
+              <div className="flex gap-3 overflow-hidden">
+                {[...Array(8)].map((_, i) => (
+                  <div key={i} className="flex-shrink-0 flex flex-col items-center gap-2 bg-surface-variant/20 rounded-2xl px-4 py-4 w-16">
+                    <div className="h-3 w-10 bg-surface-variant/40 rounded-full" />
+                    <div className="w-8 h-8 bg-surface-variant/40 rounded-full" />
+                    <div className="h-4 w-8 bg-surface-variant/50 rounded-full" />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 7-day skeleton */}
+            <div className="bg-surface-variant/20 rounded-3xl p-6">
+              <div className="h-4 w-40 bg-surface-variant/40 rounded-full mb-5" />
+              <div className="flex flex-col gap-2">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex items-center justify-between py-2 px-2">
+                    <div className="h-3 w-20 bg-surface-variant/40 rounded-full" />
+                    <div className="w-6 h-6 bg-surface-variant/40 rounded-full" />
+                    <div className="h-3 w-16 bg-surface-variant/30 rounded-full" />
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
