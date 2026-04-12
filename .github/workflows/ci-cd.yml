@@ -1,0 +1,76 @@
+name: CI/CD WeatherNow
+
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
+
+jobs:
+  backend:
+    name: API (FastAPI) - tests + build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install --no-cache-dir -r requirements.txt
+      - name: Vérifier que le code se compile
+        run: python -m compileall .
+      - name: Lancer les tests
+        run: pytest tests/
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///./test.db
+          SECRET_KEY: test-secret-key-for-ci
+          OWM_API_KEY: fake-key-for-ci
+
+  frontend:
+    name: Front (Next.js) - lint + build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: "frontend/package-lock.json"
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+
+  deploy:
+    name: Deploy sur le Pi
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Déployer sur le Raspberry Pi via SSH
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          script: |
+            cd /home/pi/sites/gotyeah-meteo
+            git pull
+            docker compose -f docker-compose.yml --env-file .env up -d --build --force-recreate
