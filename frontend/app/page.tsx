@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { SideNav } from "@/components/layout/SideNav";
 import { TRANSLATIONS, type Lang } from "@/lib/translations";
 import { useWeather } from "@/hooks/useWeather";
@@ -298,6 +299,9 @@ export default function HomePage() {
   useEffect(() => {
     if (!user) { setIsAdmin(false); return; }
     getToken().then((token) => apiAdminPing(token)).then(setIsAdmin).catch(() => setIsAdmin(false));
+    // getToken volontairement hors deps : on ne re-vérifie qu'au changement d'utilisateur,
+    // pas à chaque rotation de token
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   // Load favorites from API when authenticated
@@ -510,13 +514,13 @@ export default function HomePage() {
             </div>
 
             {isAdmin && (
-              <a
+              <Link
                 href="/admin"
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
               >
                 <span className="material-symbols-outlined text-sm">admin_panel_settings</span>
                 Admin
-              </a>
+              </Link>
             )}
             {user && (
               <div className="w-10 h-10 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-sm font-bold text-primary select-none">

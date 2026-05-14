@@ -54,7 +54,13 @@ export default function RootLayout({
       <head>
         {/* Applique le thème depuis localStorage avant le premier rendu — évite le flash */}
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
-        {/* Material Symbols Outlined — used for weather icons */}
+        {/*
+          Police d'icônes Material Symbols — chargée globalement via <link> dans le <head>
+          du layout racine (équivalent App Router de _document, donc valable sur toutes les pages).
+          display=block est volontaire : évite le flash du texte brut des ligatures
+          (« home », « sunny »…) avant le chargement de la police.
+        */}
+        {/* eslint-disable-next-line @next/next/no-page-custom-font, @next/next/google-font-display */}
         <link
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block"

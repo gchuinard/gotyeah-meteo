@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import {
   apiAdminGetUsers,
@@ -107,6 +108,9 @@ export default function AdminPage() {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoadingData(false));
+    // getToken volontairement hors deps : on charge les données une fois l'utilisateur prêt,
+    // pas à chaque rotation de token
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, authLoading]);
 
   // Reset selection when switching tables
@@ -246,9 +250,9 @@ export default function AdminPage() {
                 Connecté en tant que <span className="font-medium text-primary">{user.email}</span>
               </p>
             </div>
-            <a href="/" className="text-sm text-on-surface-variant hover:text-primary transition-colors">
+            <Link href="/" className="text-sm text-on-surface-variant hover:text-primary transition-colors">
               ← Retour au site
-            </a>
+            </Link>
           </div>
 
           {/* Tabs */}
