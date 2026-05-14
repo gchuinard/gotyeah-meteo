@@ -10,7 +10,7 @@ import { SearchAutocomplete } from "@/components/weather/SearchAutocomplete";
 import { DEFAULT_UNITS, fmtTempVal, fmtWind, fmtPressure, fmtVis, fmtDate, fmtPrecip, serializeUnits, parseUnits, type Units } from "@/lib/units";
 import type { CurrentWeather } from "@/types/weather";
 import { useAuth } from "@/context/AuthContext";
-import { apiGetFavorites, apiAddFavorite, apiDeleteFavorite, apiGetPreferences, apiUpdatePreferences } from "@/lib/api/user";
+import { apiGetFavorites, apiAddFavorite, apiDeleteFavorite, apiGetPreferences, apiUpdatePreferences, apiReorderFavorites } from "@/lib/api/user";
 import { apiAdminPing } from "@/lib/api/admin";
 
 const LOCALE_MAP: Record<Lang, string> = {
@@ -45,6 +45,29 @@ const FAV_COLORS = [
 // évite les faux doublons entre villes homonymes (Paris FR vs Paris TX)
 function sameLocation(a: { lat: number; lon: number }, b: { lat: number; lon: number }): boolean {
   return Math.abs(a.lat - b.lat) < 0.05 && Math.abs(a.lon - b.lon) < 0.05;
+}
+
+// Ville "domicile" — choisie par l'utilisateur, prioritaire sur la géolocalisation au chargement
+const LS_HOME_CITY = "wn_home_city";
+
+interface HomeCity {
+  name: string;
+  lat: number;
+  lon: number;
+}
+
+function getHomeCity(): HomeCity | null {
+  try {
+    const raw = localStorage.getItem(LS_HOME_CITY);
+    return raw ? (JSON.parse(raw) as HomeCity) : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeHomeCity(city: HomeCity | null): void {
+  if (city) localStorage.setItem(LS_HOME_CITY, JSON.stringify(city));
+  else localStorage.removeItem(LS_HOME_CITY);
 }
 
 function owmConditionKey(main: string, description: string): string {
@@ -150,6 +173,60 @@ function TempCurve({ temps, hours, nowLabel }: { temps: number[]; hours: string[
   );
 }
 
+function SunArc({ sunrise, sunset, timeFmt, tr }: {
+  sunrise: number;
+  sunset: number;
+  timeFmt: "24h" | "12h";
+  tr: Record<string, string>;
+}) {
+  const W = 280, H = 132, cx = 140, cy = 110, rx = 116, ry = 86;
+
+  // Heure de montage du composant — une capture unique suffit à positionner le soleil
+  const [now] = useState(() => Date.now() / 1000);
+  const span = sunset - sunrise;
+  const progress = span > 0 ? Math.min(Math.max((now - sunrise) / span, 0), 1) : 0.5;
+  const isDay = now >= sunrise && now <= sunset;
+
+  // Arc semi-elliptique : φ va de π (lever, à gauche) à 0 (coucher, à droite)
+  const phi = Math.PI * (1 - progress);
+  const sunX = cx + rx * Math.cos(phi);
+  const sunY = cy - ry * Math.sin(phi);
+
+  const fmtSun = (ts: number) =>
+    new Date(ts * 1000).toLocaleTimeString("en-US", {
+      hour: timeFmt === "12h" ? "numeric" : "2-digit",
+      minute: "2-digit",
+      hour12: timeFmt === "12h",
+    });
+
+  return (
+    <div className="bg-surface-container/40 backdrop-blur-2xl border border-white/5 rounded-3xl p-5">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="material-symbols-outlined text-amber-400 text-base">wb_sunny</span>
+        <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">{tr.sun ?? "Sun"}</p>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+        <line x1="12" y1={cy} x2={W - 12} y2={cy} stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+        <path d={`M ${cx - rx} ${cy} A ${rx} ${ry} 0 0 0 ${cx + rx} ${cy}`}
+          fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="2" strokeDasharray="3 5" />
+        <path d={`M ${cx - rx} ${cy} A ${rx} ${ry} 0 0 0 ${sunX} ${sunY}`}
+          fill="none" stroke="#fbbf24" strokeWidth="2.5" strokeLinecap="round" />
+        <circle cx={sunX} cy={sunY} r="7" fill={isDay ? "#fbbf24" : "#64748b"} stroke="#1e293b" strokeWidth="2.5" />
+      </svg>
+      <div className="flex justify-between mt-1">
+        <div>
+          <p className="text-[10px] text-on-surface-variant uppercase tracking-wider">{tr.sunrise ?? "Sunrise"}</p>
+          <p className="text-sm font-bold">{fmtSun(sunrise)}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] text-on-surface-variant uppercase tracking-wider">{tr.sunset ?? "Sunset"}</p>
+          <p className="text-sm font-bold">{fmtSun(sunset)}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function HomePage() {
   const { user, accessToken, getToken, login, register } = useAuth();
   const [lang, setLang]           = useState<Lang>("FR");
@@ -160,6 +237,9 @@ export default function HomePage() {
   const [favData, setFavData]     = useState<(CurrentWeather | null)[]>([null, null]);
   const [units, setUnits]         = useState<Units>(DEFAULT_UNITS);
   const [isAdmin, setIsAdmin]     = useState(false);
+  const [homeCity, setHomeCity]       = useState<HomeCity | null>(null);
+  const [draggedFav, setDraggedFav]   = useState<number | null>(null);
+  const [dragOverFav, setDragOverFav] = useState<number | null>(null);
 
   // Auth modals
   const [authModal, setAuthModal] = useState<"login" | "register" | null>(null);
@@ -256,6 +336,14 @@ export default function HomePage() {
   }, [favorites]);
 
   useEffect(() => {
+    // Une ville "domicile" enregistrée est prioritaire sur la géolocalisation au chargement
+    const home = getHomeCity();
+    setHomeCity(home);
+    if (home) {
+      searchByCoords(home.lat, home.lon, home.name);
+      return;
+    }
+
     if (!navigator.geolocation) {
       search("Paris");
       return;
@@ -321,6 +409,44 @@ export default function HomePage() {
     if (user) {
       getToken()
         .then((token) => apiUpdatePreferences(token, { unit_system: serializeUnits(u) }))
+        .catch(() => {});
+    }
+  };
+
+  // Définit (ou retire) la ville actuellement affichée comme ville "domicile" (localStorage)
+  const handleToggleHome = () => {
+    if (!current) return;
+    const isHome = homeCity != null && sameLocation(homeCity, current);
+    const next = isHome ? null : { name: current.city, lat: current.lat, lon: current.lon };
+    storeHomeCity(next);
+    setHomeCity(next);
+  };
+
+  // Réordonne les favoris par glisser-déposer et persiste l'ordre si l'utilisateur est connecté
+  const handleDropFav = (targetIndex: number) => {
+    const from = draggedFav;
+    setDraggedFav(null);
+    setDragOverFav(null);
+    if (from === null || from === targetIndex) return;
+
+    const newFavorites = [...favorites];
+    const [moved] = newFavorites.splice(from, 1);
+    newFavorites.splice(targetIndex, 0, moved);
+    setFavorites(newFavorites);
+    setFavData((prev) => {
+      const copy = [...prev];
+      const [m] = copy.splice(from, 1);
+      copy.splice(targetIndex, 0, m);
+      return copy;
+    });
+
+    // Persistance : uniquement si tous les favoris ont un id (utilisateur connecté)
+    const items = newFavorites
+      .map((f, i) => ({ id: f.id, position: i }))
+      .filter((it): it is { id: string; position: number } => Boolean(it.id));
+    if (user && items.length === newFavorites.length) {
+      getToken()
+        .then((token) => apiReorderFavorites(token, items))
         .catch(() => {});
     }
   };
@@ -496,44 +622,65 @@ export default function HomePage() {
               <div className="absolute -top-24 -right-24 w-96 h-96 bg-primary/20 blur-[120px] rounded-full pointer-events-none" />
               <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-tertiary/10 blur-[100px] rounded-full pointer-events-none" />
 
-              {/* Favorite toggle button */}
-              {(() => {
-                const isFav = favorites.some(f => sameLocation(f, current));
-                const handleToggle = async () => {
-                  if (isFav) {
-                    const existing = favorites.find(f => sameLocation(f, current));
-                    setFavorites(prev => prev.filter(f => !sameLocation(f, current)));
-                    if (user && existing?.id) {
+              {/* Action buttons — ville domicile + favori */}
+              <div className="absolute top-6 right-6 z-20 flex items-center gap-3">
+                {/* Home toggle */}
+                {(() => {
+                  const isHome = homeCity != null && sameLocation(homeCity, current);
+                  return (
+                    <button
+                      onClick={handleToggleHome}
+                      className="transition-colors"
+                      title={isHome ? "Retirer la ville domicile" : "Définir comme ville domicile"}
+                    >
+                      <span
+                        className={`material-symbols-outlined text-2xl transition-colors ${isHome ? "text-primary" : "text-on-surface-variant hover:text-primary"}`}
+                        style={isHome ? { fontVariationSettings: "'FILL' 1" } : undefined}
+                      >
+                        home
+                      </span>
+                    </button>
+                  );
+                })()}
+                {/* Favorite toggle */}
+                {(() => {
+                  const isFav = favorites.some(f => sameLocation(f, current));
+                  const handleToggle = async () => {
+                    if (isFav) {
+                      const existing = favorites.find(f => sameLocation(f, current));
+                      setFavorites(prev => prev.filter(f => !sameLocation(f, current)));
+                      if (user && existing?.id) {
+                        const token = await getToken().catch(() => null);
+                        if (token) apiDeleteFavorite(token, existing.id).catch(() => {});
+                      }
+                    } else {
+                      if (!user) { openLogin(); return; }
+                      const colors = FAV_COLORS[favorites.length % FAV_COLORS.length];
                       const token = await getToken().catch(() => null);
-                      if (token) apiDeleteFavorite(token, existing.id).catch(() => {});
+                      if (token) {
+                        apiAddFavorite(token, { city_name: current.city, lat: current.lat, lon: current.lon })
+                          .then((fav) => {
+                            setFavorites(prev => [...prev, { id: fav.id, city: fav.city_name, lat: fav.lat, lon: fav.lon, ...colors }]);
+                          })
+                          .catch(() => {
+                            setFavorites(prev => [...prev, { city: current.city, lat: current.lat, lon: current.lon, ...colors }]);
+                          });
+                      }
                     }
-                  } else {
-                    if (!user) { openLogin(); return; }
-                    const colors = FAV_COLORS[favorites.length % FAV_COLORS.length];
-                    const token = await getToken().catch(() => null);
-                    if (token) {
-                      apiAddFavorite(token, { city_name: current.city, lat: current.lat, lon: current.lon })
-                        .then((fav) => {
-                          setFavorites(prev => [...prev, { id: fav.id, city: fav.city_name, lat: fav.lat, lon: fav.lon, ...colors }]);
-                        })
-                        .catch(() => {
-                          setFavorites(prev => [...prev, { city: current.city, lat: current.lat, lon: current.lon, ...colors }]);
-                        });
-                    }
-                  }
-                };
-                return (
-                  <button
-                    onClick={handleToggle}
-                    className="absolute top-6 right-6 z-20 transition-colors"
-                    title={isFav ? "Retirer des favoris" : "Ajouter aux favoris"}
-                  >
-                    <span className={`material-symbols-outlined text-2xl transition-colors ${isFav ? "text-on-surface-variant hover:text-error" : "text-on-surface-variant hover:text-white"}`}>
-                      {isFav ? "do_not_disturb_on" : "add_circle"}
-                    </span>
-                  </button>
-                );
-              })()}
+                  };
+                  return (
+                    <button
+                      onClick={handleToggle}
+                      className="transition-colors"
+                      title={isFav ? "Retirer des favoris" : "Ajouter aux favoris"}
+                    >
+                      <span className={`material-symbols-outlined text-2xl transition-colors ${isFav ? "text-on-surface-variant hover:text-error" : "text-on-surface-variant hover:text-white"}`}>
+                        {isFav ? "do_not_disturb_on" : "add_circle"}
+                      </span>
+                    </button>
+                  );
+                })()}
+              </div>
 
               {/* City + temp + stats */}
               <div className="relative z-10 flex flex-col lg:flex-row lg:items-start gap-6 lg:gap-8">
@@ -628,7 +775,22 @@ export default function HomePage() {
                 const fColor = d ? getWeatherColor(d.weather[0].icon) : "#90A4AE";
                 const fCond = d ? (tr[owmConditionKey(d.weather[0].main, d.weather[0].description)] ?? d.weather[0].description) : "—";
                 return (
-                  <div key={`${fav.lat},${fav.lon}`} onClick={() => searchByCoords(fav.lat, fav.lon, fav.city)} className="bg-surface-container/40 backdrop-blur-2xl border border-white/5 rounded-3xl p-5 flex items-center justify-between hover:scale-[1.02] transition-transform cursor-pointer">
+                  <div
+                    key={`${fav.lat},${fav.lon}`}
+                    draggable
+                    onDragStart={() => setDraggedFav(i)}
+                    onDragOver={(e) => { e.preventDefault(); setDragOverFav(i); }}
+                    onDrop={() => handleDropFav(i)}
+                    onDragEnd={() => { setDraggedFav(null); setDragOverFav(null); }}
+                    onClick={() => searchByCoords(fav.lat, fav.lon, fav.city)}
+                    className={`bg-surface-container/40 backdrop-blur-2xl border rounded-3xl p-5 flex items-center justify-between transition-all cursor-grab active:cursor-grabbing ${
+                      draggedFav === i
+                        ? "opacity-40 border-white/5"
+                        : dragOverFav === i
+                        ? "border-primary/50 ring-2 ring-primary/40"
+                        : "border-white/5 hover:scale-[1.02]"
+                    }`}
+                  >
                     <div className="flex items-center gap-4">
                       <div className={`w-12 h-12 rounded-2xl ${fav.bgColor} flex items-center justify-center`}>
                         <span className="material-symbols-outlined" style={{ color: fColor }}>{fIcon}</span>
@@ -642,6 +804,9 @@ export default function HomePage() {
                   </div>
                 );
               })}
+
+              {/* Soleil — lever / coucher */}
+              <SunArc sunrise={current.sunrise} sunset={current.sunset} timeFmt={units.time} tr={tr} />
             </section>
 
             </div>{/* end Hero+Favorites grid */}
