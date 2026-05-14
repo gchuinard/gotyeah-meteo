@@ -282,7 +282,8 @@ export default function HomePage() {
         setLocStatus("denied");
         search("Paris");
       },
-      { timeout: 8000 }
+      // maximumAge: 0 — force une position fraîche plutôt qu'un fix mis en cache
+      { timeout: 8000, maximumAge: 0 }
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -309,7 +310,8 @@ export default function HomePage() {
         }
       },
       () => setLocStatus("denied"),
-      { timeout: 8000 }
+      // maximumAge: 0 — force une position fraîche plutôt qu'un fix mis en cache
+      { timeout: 8000, maximumAge: 0 }
     );
   }
 
