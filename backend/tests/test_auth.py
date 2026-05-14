@@ -1,3 +1,8 @@
+"""
+Module : test_auth.py
+Rôle   : Tests d'intégration des endpoints d'authentification (/auth/*).
+"""
+
 import pytest
 from httpx import AsyncClient
 

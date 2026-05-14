@@ -2,12 +2,19 @@
 Module : admin.py
 Rôle   : Endpoints du back-office admin — consultation des utilisateurs, favoris et tables SQL.
          L'accès est restreint aux emails listés dans la variable d'env ADMIN_EMAILS.
+
+Dépendances notables :
+  - get_current_user : dépendance auth partagée depuis app.routers.auth
+  - sqlalchemy       : agrégats et inspection des tables exposées au back-office
 """
+
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy import inspect, select, text, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.db.base import get_db
@@ -42,9 +49,6 @@ class AdminFavoriteOut(BaseModel):
     position: int
     created_at: str
 
-    class Config:
-        from_attributes = True
-
 
 class AdminUserOut(BaseModel):
     id: str
@@ -53,9 +57,6 @@ class AdminUserOut(BaseModel):
     created_at: str
     theme: str | None
     favorites: list[AdminFavoriteOut]
-
-    class Config:
-        from_attributes = True
 
 
 class TableRow(BaseModel):
@@ -84,29 +85,23 @@ async def list_users(
     _: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> list[AdminUserOut]:
+    # selectinload : charge favoris + préférences en 2 requêtes groupées au lieu de 2N+1
     result = await db.execute(
-        select(User).order_by(User.created_at.desc())
+        select(User)
+        .options(selectinload(User.favorites), selectinload(User.preferences))
+        .order_by(User.created_at.desc())
     )
     users = result.scalars().all()
 
     out = []
     for u in users:
-        favs_result = await db.execute(
-            select(Favorite).where(Favorite.user_id == u.id).order_by(Favorite.position)
-        )
-        favs = favs_result.scalars().all()
-
-        prefs_result = await db.execute(
-            select(Preferences).where(Preferences.user_id == u.id)
-        )
-        prefs = prefs_result.scalar_one_or_none()
-
+        favs = sorted(u.favorites, key=lambda f: f.position)
         out.append(AdminUserOut(
             id=str(u.id),
             email=u.email,
             username=u.username,
             created_at=u.created_at.isoformat(),
-            theme=prefs.theme if prefs else None,
+            theme=u.preferences.theme if u.preferences else None,
             favorites=[
                 AdminFavoriteOut(
                     id=str(f.id),
@@ -124,7 +119,7 @@ async def list_users(
 
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
-    user_id: str,
+    user_id: uuid.UUID,
     _: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> None:
@@ -138,7 +133,7 @@ async def delete_user(
 
 @router.delete("/favorites/{favorite_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_favorite(
-    favorite_id: str,
+    favorite_id: uuid.UUID,
     _: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> None:

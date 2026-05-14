@@ -56,7 +56,7 @@ class Preferences(Base):
 
     Attributes:
         user_id (UUID): Clé primaire et étrangère vers users.id.
-        unit_system (str): Système d'unités choisi (ex. "metric").
+        unit_system (str): Préférences d'unités sérialisées en JSON (température, vent, etc.).
         theme (str): Identifiant du thème visuel choisi (ex. "ocean").
         updated_at (datetime): Date de la dernière modification (UTC).
     """
@@ -66,7 +66,7 @@ class Preferences(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
-    unit_system: Mapped[str] = mapped_column(String(20), default="metric")
+    unit_system: Mapped[str] = mapped_column(String(255), default="metric")
     theme: Mapped[str] = mapped_column(String(20), default="ocean")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 

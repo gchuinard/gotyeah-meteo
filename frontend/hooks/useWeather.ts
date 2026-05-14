@@ -43,7 +43,6 @@ export function useWeather() {
    * @param city - Nom de la ville à rechercher.
    */
   const search = useCallback(async (city: string) => {
-    console.log("[useWeather] search →", city);
     setState((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
@@ -51,16 +50,13 @@ export function useWeather() {
       if (!locations.length) throw new Error("City not found");
 
       const location = locations[0];
-      console.log("[useWeather] geocode OK →", location);
       const [current, forecast] = await Promise.all([
         fetchCurrentWeather(location.lat, location.lon),
         fetchForecast(location.lat, location.lon),
       ]);
 
-      console.log("[useWeather] weather loaded ✅");
       setState({ location, current, forecast, loading: false, error: null });
     } catch (err) {
-      console.error("[useWeather] search failed ❌", err);
       setState((prev) => ({
         ...prev,
         loading: false,

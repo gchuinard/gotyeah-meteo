@@ -6,8 +6,8 @@ Real-time weather forecasts powered by [OpenWeatherMap](https://openweathermap.o
 
 | Layer    | Technology                                      |
 | -------- | ----------------------------------------------- |
-| Frontend | Next.js 16 · TypeScript · Tailwind CSS · shadcn/ui |
-| Backend  | FastAPI 0.135+ · Python 3.13 · httpx            |
+| Frontend | Next.js 16 · TypeScript · Tailwind CSS          |
+| Backend  | FastAPI 0.135+ · Python 3.14 · httpx            |
 
 ## Getting started
 
@@ -20,13 +20,17 @@ cp .env.example .env
 
 ### 2. Run with Docker Compose
 
+The Compose stack attaches to an external Docker network (shared with the reverse
+proxy in production). Create it once before the first run:
+
 ```bash
+docker network create weathernow-net
 docker compose up --build
 ```
 
-- Frontend → http://localhost:3000
-- Backend API → http://localhost:8000
-- API docs → http://localhost:8000/docs
+Containers are published on the `weathernow-net` network only — there are no host
+port mappings. For direct `localhost` access during development, use the
+"Run locally" steps below.
 
 ### 3. Run locally (without Docker)
 

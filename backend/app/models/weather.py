@@ -1,3 +1,8 @@
+"""
+Module : weather.py
+Rôle   : Schémas Pydantic des réponses météo (géocodage, météo courante, prévisions).
+"""
+
 from typing import Optional, List
 from pydantic import BaseModel
 

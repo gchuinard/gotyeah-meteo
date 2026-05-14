@@ -7,10 +7,10 @@ import { useWeather } from "@/hooks/useWeather";
 import { fetchCurrentWeather } from "@/lib/api";
 import { getWeatherIcon, getWeatherColor } from "@/lib/weatherIcons";
 import { SearchAutocomplete } from "@/components/weather/SearchAutocomplete";
-import { DEFAULT_UNITS, fmtTempVal, fmtWind, fmtPressure, fmtVis, fmtDate, fmtPrecip, type Units } from "@/lib/units";
+import { DEFAULT_UNITS, fmtTempVal, fmtWind, fmtPressure, fmtVis, fmtDate, fmtPrecip, serializeUnits, parseUnits, type Units } from "@/lib/units";
 import type { CurrentWeather } from "@/types/weather";
 import { useAuth } from "@/context/AuthContext";
-import { apiGetFavorites, apiAddFavorite, apiDeleteFavorite } from "@/lib/api/user";
+import { apiGetFavorites, apiAddFavorite, apiDeleteFavorite, apiGetPreferences, apiUpdatePreferences } from "@/lib/api/user";
 import { apiAdminPing } from "@/lib/api/admin";
 
 const LOCALE_MAP: Record<Lang, string> = {
@@ -40,6 +40,12 @@ const FAV_COLORS = [
   { bgColor: "bg-violet-400/10", iconColor: "text-violet-400" },
   { bgColor: "bg-rose-400/10",   iconColor: "text-rose-400"   },
 ];
+
+// Deux positions sont considérées identiques si elles sont à moins de ~5 km —
+// évite les faux doublons entre villes homonymes (Paris FR vs Paris TX)
+function sameLocation(a: { lat: number; lon: number }, b: { lat: number; lon: number }): boolean {
+  return Math.abs(a.lat - b.lat) < 0.05 && Math.abs(a.lon - b.lon) < 0.05;
+}
 
 function owmConditionKey(main: string, description: string): string {
   switch (main) {
@@ -233,7 +239,14 @@ export default function HomePage() {
         }))
       );
     }).catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, accessToken]);
+
+  // Load unit preferences from API when authenticated
+  useEffect(() => {
+    if (!user || !accessToken) return;
+    apiGetPreferences(accessToken)
+      .then((prefs) => setUnits(parseUnits(prefs.unit_system)))
+      .catch(() => {});
   }, [user, accessToken]);
 
   useEffect(() => {
@@ -243,9 +256,7 @@ export default function HomePage() {
   }, [favorites]);
 
   useEffect(() => {
-    console.log("[WeatherNow] Geolocation effect fired");
     if (!navigator.geolocation) {
-      console.log("[WeatherNow] No geolocation — searching Paris");
       search("Paris");
       return;
     }
@@ -253,25 +264,21 @@ export default function HomePage() {
     setLocStatus("loading");
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
-        console.log("[WeatherNow] Geolocation OK:", pos.coords.latitude, pos.coords.longitude);
         try {
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`
           );
           const data = await res.json();
           const city = data.address?.city || data.address?.town || data.address?.village || "Paris";
-          console.log("[WeatherNow] Reverse geocode →", city);
           setLocCity(city);
           setLocStatus("ok");
           search(city);
-        } catch (err) {
-          console.warn("[WeatherNow] Reverse geocode failed:", err, "— fallback to Paris");
+        } catch {
           setLocStatus("idle");
           search("Paris");
         }
       },
-      (err) => {
-        console.warn("[WeatherNow] Geolocation denied/error:", err.message, "— fallback to Paris");
+      () => {
         setLocStatus("denied");
         search("Paris");
       },
@@ -296,14 +303,25 @@ export default function HomePage() {
           setLocStatus("ok");
           search(city);
         } catch {
-          setLocCity("Paris");
-          setLocStatus("ok");
+          // Échec du géocodage inverse — on charge quand même une météo par défaut
+          setLocStatus("idle");
+          search("Paris");
         }
       },
       () => setLocStatus("denied"),
       { timeout: 8000 }
     );
   }
+
+  // Met à jour les unités et les persiste côté backend si l'utilisateur est connecté
+  const handleUnitsChange = (u: Units) => {
+    setUnits(u);
+    if (user) {
+      getToken()
+        .then((token) => apiUpdatePreferences(token, { unit_system: serializeUnits(u) }))
+        .catch(() => {});
+    }
+  };
 
   const dateStr = current
     ? `${new Date(current.dt * 1000).toLocaleDateString(LOCALE_MAP[lang], { weekday: "long" })} · ${fmtDate(current.dt, units.date)}`
@@ -322,7 +340,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-background text-on-surface">
-      <SideNav units={units} onUnitsChange={setUnits} onOpenLogin={openLogin} onOpenRegister={openRegister} />
+      <SideNav units={units} onUnitsChange={handleUnitsChange} onOpenLogin={openLogin} onOpenRegister={openRegister} />
 
       <div className="lg:ml-64 min-h-screen relative overflow-x-hidden">
 
@@ -478,11 +496,11 @@ export default function HomePage() {
 
               {/* Favorite toggle button */}
               {(() => {
-                const isFav = favorites.some(f => f.city === current.city);
+                const isFav = favorites.some(f => sameLocation(f, current));
                 const handleToggle = async () => {
                   if (isFav) {
-                    const existing = favorites.find(f => f.city === current.city);
-                    setFavorites(prev => prev.filter(f => f.city !== current.city));
+                    const existing = favorites.find(f => sameLocation(f, current));
+                    setFavorites(prev => prev.filter(f => !sameLocation(f, current)));
                     if (user && existing?.id) {
                       const token = await getToken().catch(() => null);
                       if (token) apiDeleteFavorite(token, existing.id).catch(() => {});
@@ -608,7 +626,7 @@ export default function HomePage() {
                 const fColor = d ? getWeatherColor(d.weather[0].icon) : "#90A4AE";
                 const fCond = d ? (tr[owmConditionKey(d.weather[0].main, d.weather[0].description)] ?? d.weather[0].description) : "—";
                 return (
-                  <div key={fav.city} onClick={() => searchByCoords(fav.lat, fav.lon, fav.city)} className="bg-surface-container/40 backdrop-blur-2xl border border-white/5 rounded-3xl p-5 flex items-center justify-between hover:scale-[1.02] transition-transform cursor-pointer">
+                  <div key={`${fav.lat},${fav.lon}`} onClick={() => searchByCoords(fav.lat, fav.lon, fav.city)} className="bg-surface-container/40 backdrop-blur-2xl border border-white/5 rounded-3xl p-5 flex items-center justify-between hover:scale-[1.02] transition-transform cursor-pointer">
                     <div className="flex items-center gap-4">
                       <div className={`w-12 h-12 rounded-2xl ${fav.bgColor} flex items-center justify-center`}>
                         <span className="material-symbols-outlined" style={{ color: fColor }}>{fIcon}</span>
@@ -709,7 +727,7 @@ export default function HomePage() {
               {/* Daily forecast */}
               {allItems.length > 0 && (
                 <section className="lg:col-span-3 bg-surface-container/40 backdrop-blur-2xl border border-white/5 rounded-[2rem] p-6 lg:p-8 h-fit">
-                  <h3 className="text-xl font-bold mb-6">{tr.sevenDayForecast}</h3>
+                  <h3 className="text-xl font-bold mb-6">{tr.dailyForecast}</h3>
                   <div className="space-y-4">
                     {allItems.map((f, i) => {
                       const fIcon      = getWeatherIcon(f.weather[0].icon);

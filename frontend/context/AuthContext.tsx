@@ -28,7 +28,7 @@ import {
   apiRegister,
   UserOut,
 } from "@/lib/api/auth";
-import { apiGetPreferences } from "@/lib/api/user";
+import { apiGetPreferences, apiUpdateProfile } from "@/lib/api/user";
 import { useTheme } from "@/context/ThemeContext";
 
 interface AuthState {
@@ -43,6 +43,8 @@ interface AuthContextValue extends AuthState {
   register: (email: string, password: string, username: string) => Promise<void>;
   logout: () => Promise<void>;
   deleteAccount: () => Promise<void>;
+  /** Met à jour le pseudo de l'utilisateur connecté et synchronise l'état local. */
+  updateProfile: (username: string) => Promise<void>;
   /**
    * Retourne un access token valide, en le rafraîchissant automatiquement si nécessaire.
    * @throws {Error} Si l'utilisateur n'est pas authentifié.
@@ -55,6 +57,22 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 // Clés localStorage — préfixe "wn_" pour éviter les collisions avec d'autres apps
 const LS_ACCESS  = "wn_access_token";
 const LS_REFRESH = "wn_refresh_token";
+
+/**
+ * Indique si un JWT est expiré (ou le sera dans moins de 10 s).
+ * Décode le payload sans vérifier la signature — sert uniquement à décider d'un refresh.
+ *
+ * @param token - JWT d'accès.
+ * @returns true si le token est illisible ou (quasi) expiré.
+ */
+function isTokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return typeof payload.exp !== "number" || payload.exp * 1000 <= Date.now() + 10_000;
+  } catch {
+    return true;
+  }
+}
 
 /**
  * AuthProvider
@@ -106,11 +124,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .catch(async () => {
         // L'access token est peut-être expiré — on tente un refresh silencieux
         try {
-          const { access_token } = await apiRefresh(refresh);
-          localStorage.setItem(LS_ACCESS, access_token);
-          const user = await apiMe(access_token);
-          await loadAndApplyTheme(access_token);
-          setState({ user, accessToken: access_token, refreshToken: refresh, loading: false });
+          const tokens = await apiRefresh(refresh);
+          localStorage.setItem(LS_ACCESS, tokens.access_token);
+          localStorage.setItem(LS_REFRESH, tokens.refresh_token);
+          const user = await apiMe(tokens.access_token);
+          await loadAndApplyTheme(tokens.access_token);
+          setState({ user, accessToken: tokens.access_token, refreshToken: tokens.refresh_token, loading: false });
         } catch {
           // Refresh invalide — on efface la session pour forcer une reconnexion
           localStorage.removeItem(LS_ACCESS);
@@ -187,16 +206,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const getToken = useCallback(async (): Promise<string> => {
     const access  = state.accessToken;
     const refresh = state.refreshToken ?? localStorage.getItem(LS_REFRESH);
+    // Token encore valide : on le réutilise tel quel
+    if (access && !isTokenExpired(access)) return access;
     if (!refresh) throw new Error("Not authenticated");
-    if (access) return access;
-    const { access_token } = await apiRefresh(refresh);
-    localStorage.setItem(LS_ACCESS, access_token);
-    setState((s) => ({ ...s, accessToken: access_token }));
-    return access_token;
+    // Token périmé ou absent : refresh (la rotation renvoie un nouveau couple à stocker)
+    const tokens = await apiRefresh(refresh);
+    localStorage.setItem(LS_ACCESS, tokens.access_token);
+    localStorage.setItem(LS_REFRESH, tokens.refresh_token);
+    setState((s) => ({ ...s, accessToken: tokens.access_token, refreshToken: tokens.refresh_token }));
+    return tokens.access_token;
   }, [state.accessToken, state.refreshToken]);
 
+  /**
+   * Met à jour le pseudo de l'utilisateur côté serveur et synchronise l'état local.
+   *
+   * @param username - Nouveau pseudo.
+   * @throws {Error} Si le pseudo est déjà pris ou si l'utilisateur n'est pas authentifié.
+   */
+  const updateProfile = useCallback(async (username: string) => {
+    const token = await getToken();
+    const updated = await apiUpdateProfile(token, username);
+    setState((s) => ({ ...s, user: updated }));
+  }, [getToken]);
+
   return (
-    <AuthContext.Provider value={{ ...state, login, register, logout, deleteAccount, getToken }}>
+    <AuthContext.Provider value={{ ...state, login, register, logout, deleteAccount, updateProfile, getToken }}>
       {children}
     </AuthContext.Provider>
   );

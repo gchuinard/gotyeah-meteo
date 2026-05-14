@@ -34,7 +34,11 @@ class OWMService:
         return None
 
     def _set_cached(self, key: str, data: object, ttl: int) -> None:
-        self._cache[key] = (data, time.monotonic() + ttl)
+        now = time.monotonic()
+        # Au-delà d'un seuil, purge les entrées expirées pour borner la taille du cache
+        if len(self._cache) > 256:
+            self._cache = {k: v for k, v in self._cache.items() if v[1] > now}
+        self._cache[key] = (data, now + ttl)
 
     async def _get(self, url: str, params: dict, ttl: int | None = None) -> dict:
         ttl = ttl if ttl is not None else settings.cache_ttl_seconds
@@ -64,6 +68,8 @@ class OWMService:
         return await self._get(f"{OWM_BASE}/data/2.5/forecast", {"lat": lat, "lon": lon, "units": "metric"})
 
     async def uv_index(self, lat: float, lon: float) -> dict:
+        # FIXME(gautier): /data/2.5/uvi est déprécié par OWM (déplacé dans One Call API 3.0) —
+        # l'appel échoue, le routeur dégrade alors uv_index en None
         # UV change lentement : TTL plus long
         return await self._get(f"{OWM_BASE}/data/2.5/uvi", {"lat": lat, "lon": lon}, ttl=1800)
 

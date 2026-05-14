@@ -1,6 +1,8 @@
 from __future__ import annotations
 import logging
 import sys
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -23,14 +25,16 @@ except Exception as exc:
     log.warning("⚠️  Auth routers disabled — %s: %s", type(exc).__name__, exc)
     log.warning("    Run:  pip install python-jose[cryptography] passlib[bcrypt] asyncpg sqlalchemy[asyncio]")
 
-app = FastAPI(
-    title="WeatherNow API",
-    description="Backend API for WeatherNow — powered by OpenWeatherMap",
-    version="0.1.0",
-)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Vérifie la configuration et journalise l'état des services au démarrage."""
+    # Garde-fou : refuser de démarrer en production avec un secret JWT resté par défaut
+    if settings.environment == "production" and settings.secret_key.startswith("change-me"):
+        raise RuntimeError(
+            "SECRET_KEY est resté sur sa valeur par défaut — "
+            "définissez un secret réel avant de démarrer en production"
+        )
 
-@app.on_event("startup")
-async def on_startup():
     log.info("🐍 Python %s", sys.version)
     key = settings.owm_api_key
     if key:
@@ -43,6 +47,15 @@ async def on_startup():
         log.warning("⚠️  Auth routers NOT loaded — endpoints /auth and /user are unavailable")
         if _auth_error:
             log.warning("    Cause: %s: %s", type(_auth_error).__name__, _auth_error)
+    yield
+
+
+app = FastAPI(
+    title="WeatherNow API",
+    description="Backend API for WeatherNow — powered by OpenWeatherMap",
+    version="0.1.0",
+    lifespan=lifespan,
+)
 
 # ---------------------------------------------------------------------------
 # CORS — allow requests from the Next.js dev server and production

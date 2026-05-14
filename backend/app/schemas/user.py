@@ -1,3 +1,8 @@
+"""
+Module : user.py
+Rôle   : Schémas Pydantic des préférences, favoris et profil utilisateur.
+"""
+
 import uuid
 from datetime import datetime
 
@@ -13,8 +18,13 @@ class PreferencesOut(BaseModel):
 
 
 class PreferencesUpdate(BaseModel):
-    unit_system: str | None = Field(None, max_length=20)
+    # unit_system : JSON sérialisé des préférences d'unités côté front
+    unit_system: str | None = Field(None, max_length=255)
     theme: str | None = Field(None, max_length=20)
+
+
+class ProfileUpdate(BaseModel):
+    username: str = Field(min_length=2, max_length=50)
 
 
 class FavoriteOut(BaseModel):

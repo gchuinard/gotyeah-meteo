@@ -16,12 +16,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.base import get_db
 from app.db.models import Favorite, Preferences, User
 from app.routers.auth import get_current_user
+from app.schemas.auth import UserOut
 from app.schemas.user import (
     FavoriteCreate,
     FavoriteOut,
     FavoriteReorderRequest,
     PreferencesOut,
     PreferencesUpdate,
+    ProfileUpdate,
 )
 
 router = APIRouter()
@@ -89,6 +91,44 @@ async def update_preferences(
     await db.commit()
     await db.refresh(prefs)
     return prefs
+
+
+@router.put("/profile", response_model=UserOut)
+async def update_profile(
+    body: ProfileUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> UserOut:
+    """
+    Met à jour le pseudo de l'utilisateur connecté.
+
+    Args:
+        body (ProfileUpdate): Nouveau pseudo (2 à 50 caractères).
+        current_user (User): Utilisateur authentifié.
+        db (AsyncSession): Session de base de données.
+
+    Returns:
+        UserOut: Profil mis à jour.
+
+    Raises:
+        HTTPException: 400 si le pseudo est déjà utilisé par un autre compte.
+    """
+    username = body.username.strip()
+    existing = await db.execute(
+        select(User).where(User.username == username, User.id != current_user.id)
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Username already taken")
+
+    current_user.username = username
+    await db.commit()
+    await db.refresh(current_user)
+    return UserOut(
+        id=str(current_user.id),
+        email=current_user.email,
+        username=current_user.username,
+        created_at=current_user.created_at.isoformat(),
+    )
 
 
 @router.get("/favorites", response_model=list[FavoriteOut])

@@ -6,6 +6,8 @@
  * - NEXT_PUBLIC_API_URL : URL de base du backend, injectée à la compilation par Next.js
  */
 
+import type { UserOut } from "@/lib/api/auth";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export interface PreferencesOut {
@@ -150,4 +152,25 @@ export async function apiReorderFavorites(
     body: JSON.stringify({ items }),
   });
   return handleResponse<void>(res);
+}
+
+// ---------------------------------------------------------------------------
+// Profil
+// ---------------------------------------------------------------------------
+
+/**
+ * Met à jour le pseudo de l'utilisateur connecté.
+ *
+ * @param token - Access token JWT valide.
+ * @param username - Nouveau pseudo (2 à 50 caractères).
+ * @returns Profil utilisateur mis à jour.
+ * @throws {Error} Si le pseudo est déjà utilisé par un autre compte.
+ */
+export async function apiUpdateProfile(token: string, username: string): Promise<UserOut> {
+  const res = await fetch(`${API_URL}/user/profile`, {
+    method: "PUT",
+    headers: authHeaders(token),
+    body: JSON.stringify({ username }),
+  });
+  return handleResponse<UserOut>(res);
 }

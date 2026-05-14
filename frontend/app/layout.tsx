@@ -50,7 +50,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html lang="fr" className="dark" suppressHydrationWarning>
       <head>
         {/* Applique le thème depuis localStorage avant le premier rendu — évite le flash */}
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
@@ -60,7 +60,7 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block"
         />
       </head>
-      <body className={`${inter.variable} font-sans min-h-screen bg-[#0b1326] text-[#dae2fd]`}>
+      <body className={`${inter.variable} font-sans min-h-screen`}>
         <ThemeProvider>
           <AuthProvider>{children}</AuthProvider>
         </ThemeProvider>

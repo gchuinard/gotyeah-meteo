@@ -1,3 +1,8 @@
+"""
+Module : auth.py
+Rôle   : Schémas Pydantic des requêtes et réponses d'authentification.
+"""
+
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -15,11 +20,6 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
-    token_type: str = "bearer"
-
-
-class AccessTokenResponse(BaseModel):
-    access_token: str
     token_type: str = "bearer"
 
 

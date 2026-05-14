@@ -14,11 +14,6 @@ export interface TokenResponse {
   token_type: string;
 }
 
-export interface AccessTokenResponse {
-  access_token: string;
-  token_type: string;
-}
-
 export interface UserOut {
   id: string;
   email: string;
@@ -76,44 +71,48 @@ export async function apiLogin(email: string, password: string): Promise<TokenRe
 }
 
 /**
- * Échange un refresh token valide contre un nouvel access token.
+ * Échange un refresh token valide contre un nouveau couple de tokens (rotation côté serveur).
  *
  * @param refreshToken - Refresh token brut stocké côté client.
- * @returns Nouvel access token.
+ * @returns Nouveau couple access + refresh token.
  * @throws {Error} Si le refresh token est invalide ou expiré.
  */
-export async function apiRefresh(refreshToken: string): Promise<AccessTokenResponse> {
+export async function apiRefresh(refreshToken: string): Promise<TokenResponse> {
   const res = await fetch(`${API_URL}/auth/refresh`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refresh_token: refreshToken }),
   });
-  return handleResponse<AccessTokenResponse>(res);
+  return handleResponse<TokenResponse>(res);
 }
 
 /**
  * Révoque le refresh token côté serveur (déconnexion).
  *
  * @param refreshToken - Refresh token à invalider.
+ * @throws {Error} Si la révocation échoue côté serveur.
  */
 export async function apiLogout(refreshToken: string): Promise<void> {
-  await fetch(`${API_URL}/auth/logout`, {
+  const res = await fetch(`${API_URL}/auth/logout`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refresh_token: refreshToken }),
   });
+  if (!res.ok) throw new Error(`Logout failed: HTTP ${res.status}`);
 }
 
 /**
  * Supprime le compte de l'utilisateur connecté (irréversible).
  *
  * @param accessToken - JWT d'accès valide.
+ * @throws {Error} Si la suppression échoue côté serveur.
  */
 export async function apiDeleteAccount(accessToken: string): Promise<void> {
-  await fetch(`${API_URL}/auth/me`, {
+  const res = await fetch(`${API_URL}/auth/me`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${accessToken}` },
   });
+  if (!res.ok) throw new Error(`Account deletion failed: HTTP ${res.status}`);
 }
 
 /**

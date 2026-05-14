@@ -1,6 +1,6 @@
 """
 Module : weather.py
-Rôle   : Endpoints météo — géocodage, météo courante et prévisions sur 7 jours / 24h.
+Rôle   : Endpoints météo — géocodage, météo courante et prévisions journalières / 24h.
 
 Dépendances notables :
   - owm_service : client HTTP vers l'API OpenWeatherMap (mise en cache incluse)
@@ -19,7 +19,6 @@ from app.models.weather import (
 from app.services.owm import owm_service
 from app.config import settings
 
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger("weathernow")
 
 router = APIRouter()
@@ -128,7 +127,8 @@ async def forecast(
     lon: float = Query(..., ge=-180, le=180),
 ):
     """
-    Retourne les prévisions sur 7 jours (aggrégation par jour) et 24h (créneaux 3h).
+    Retourne les prévisions journalières (agrégation par jour, ~5 jours via l'API
+    gratuite OWM) et les prévisions 24h (créneaux de 3h).
 
     Args:
         lat (float): Latitude entre -90 et 90.

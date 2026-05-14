@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import (
@@ -27,7 +27,6 @@ from app.core.security import (
 from app.db.base import get_db
 from app.db.models import Preferences, RefreshToken, User
 from app.schemas.auth import (
-    AccessTokenResponse,
     LoginRequest,
     RefreshRequest,
     RegisterRequest,
@@ -64,11 +63,13 @@ async def get_current_user(
         HTTPException: 401 si le token est invalide ou l'utilisateur introuvable.
     """
     try:
-        user_id = decode_access_token(token)
-    except JWTError:
+        # uuid.UUID est inclus dans le try : un JWT valide dont le claim "sub"
+        # n'est pas un UUID doit produire un 401, pas une 500
+        user_id = uuid.UUID(decode_access_token(token))
+    except (JWTError, ValueError):
         raise _CREDENTIALS_EXC
 
-    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
+    result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if user is None:
         raise _CREDENTIALS_EXC
@@ -131,6 +132,14 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)) -> Token
     if not user or not verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+    # Purge des refresh tokens expirés — évite une croissance non bornée de la table
+    await db.execute(
+        delete(RefreshToken).where(
+            RefreshToken.user_id == user.id,
+            RefreshToken.expires_at < datetime.now(timezone.utc),
+        )
+    )
+
     raw, token_hash, expires_at = create_refresh_token()
     db.add(RefreshToken(user_id=user.id, token_hash=token_hash, expires_at=expires_at))
     await db.commit()
@@ -141,17 +150,20 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)) -> Token
     )
 
 
-@router.post("/refresh", response_model=AccessTokenResponse)
-async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)) -> AccessTokenResponse:
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
     """
-    Émet un nouvel access token à partir d'un refresh token valide.
+    Émet un nouveau couple de tokens à partir d'un refresh token valide (rotation).
+
+    Le refresh token présenté est révoqué et remplacé : un token volé ne reste
+    exploitable que jusqu'au prochain refresh légitime.
 
     Args:
         body (RefreshRequest): Refresh token brut envoyé par le client.
         db (AsyncSession): Session de base de données.
 
     Returns:
-        AccessTokenResponse: Nouvel access token.
+        TokenResponse: Nouvel access token et nouveau refresh token.
 
     Raises:
         HTTPException: 401 si le refresh token est invalide, révoqué ou expiré.
@@ -166,7 +178,16 @@ async def refresh(body: RefreshRequest, db: AsyncSession = Depends(get_db)) -> A
     if not rt or rt.revoked_at is not None or rt.expires_at.replace(tzinfo=timezone.utc) < now:
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
-    return AccessTokenResponse(access_token=create_access_token(str(rt.user_id)))
+    # Rotation : on révoque le token présenté et on en émet un nouveau
+    rt.revoked_at = now
+    raw, new_hash, expires_at = create_refresh_token()
+    db.add(RefreshToken(user_id=rt.user_id, token_hash=new_hash, expires_at=expires_at))
+    await db.commit()
+
+    return TokenResponse(
+        access_token=create_access_token(str(rt.user_id)),
+        refresh_token=raw,
+    )
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

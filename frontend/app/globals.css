@@ -58,7 +58,7 @@
 
   body {
     background-color: rgb(var(--wn-bg));
-    color: #dae2fd;
+    color: rgb(var(--wn-on-surface));
     font-family: 'Inter', sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
     -webkit-font-smoothing: antialiased;

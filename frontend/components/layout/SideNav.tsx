@@ -66,12 +66,12 @@ export function SideNav({ units, onUnitsChange, onOpenLogin, onOpenRegister }: P
   const set = <K extends keyof Units>(key: K, val: Units[K]) =>
     onUnitsChange({ ...units, [key]: val });
 
-  const { user, logout, getToken, deleteAccount } = useAuth();
+  const { user, logout, getToken, deleteAccount, updateProfile } = useAuth();
   const { themeId, setTheme }      = useTheme();
 
   const [profileOpen, setProfileOpen] = useState(false);
   const [pseudo, setPseudo]           = useState("");
-  const [savedPseudo, setSavedPseudo] = useState("");
+  const [profileError, setProfileError] = useState<string | null>(null);
   // Snapshot de l'ambiance active au moment de l'ouverture du modal — utilisé par "Annuler"
   const [snapshotId, setSnapshotId]   = useState(themeId);
   const [saving, setSaving]           = useState(false);
@@ -81,7 +81,8 @@ export function SideNav({ units, onUnitsChange, onOpenLogin, onOpenRegister }: P
   /** Ouvre le modal Profil en capturant l'ambiance courante comme point de restauration. */
   function openProfile() {
     setSnapshotId(themeId);
-    setPseudo(savedPseudo);
+    setPseudo(user?.username ?? "");
+    setProfileError(null);
     setProfileOpen(true);
   }
 
@@ -92,25 +93,39 @@ export function SideNav({ units, onUnitsChange, onOpenLogin, onOpenRegister }: P
   }
 
   /**
-   * Valide le choix d'ambiance : persiste en base (si connecté) puis met à jour le cache local.
-   * En cas d'erreur réseau, le thème prévisualisé reste actif mais n'est pas persisté.
+   * Valide les modifications du profil : met à jour le pseudo (bloquant, erreur affichée)
+   * puis persiste l'ambiance choisie (best-effort) avant de fermer le modal.
    */
   async function handleValidate() {
     setSaving(true);
+    setProfileError(null);
+
+    // Mise à jour du pseudo — bloquante : un doublon doit être signalé à l'utilisateur
+    if (user) {
+      const newPseudo = pseudo.trim();
+      if (newPseudo && newPseudo !== user.username) {
+        try {
+          await updateProfile(newPseudo);
+        } catch (err) {
+          setProfileError(err instanceof Error ? err.message : "Erreur inconnue");
+          setSaving(false);
+          return; // garde le modal ouvert pour afficher l'erreur
+        }
+      }
+    }
+
+    // Persistance de l'ambiance — best-effort : n'empêche pas la fermeture du modal
     try {
       if (user) {
         const token = await getToken();
         await apiUpdatePreferences(token, { theme: themeId });
       }
     } catch {
-      // Non bloquant — on persiste quand même localement
-    } finally {
-      // Persistance locale systématique — même si l'API échoue
-      setTheme(themeId, true);
-      setSavedPseudo(pseudo.trim());
-      setSaving(false);
-      setProfileOpen(false);
+      // Non bloquant — le thème reste appliqué localement
     }
+    setTheme(themeId, true);
+    setSaving(false);
+    setProfileOpen(false);
   }
 
   return (
@@ -133,7 +148,7 @@ export function SideNav({ units, onUnitsChange, onOpenLogin, onOpenRegister }: P
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all duration-300 text-on-surface-variant hover:text-on-surface hover:bg-white/5"
               >
                 <span className="material-symbols-outlined">person</span>
-                {user?.username || savedPseudo || "Profil"}
+                {user?.username || "Profil"}
               </button>
               <button
                 onClick={() => logout()}
@@ -336,17 +351,24 @@ export function SideNav({ units, onUnitsChange, onOpenLogin, onOpenRegister }: P
               })}
             </div>
 
-            <label className="block text-xs text-on-surface-variant font-semibold uppercase tracking-wider mb-2">
-              Pseudo
-            </label>
-            <input
-              autoFocus
-              value={pseudo}
-              onChange={(e) => setPseudo(e.target.value)}
-              placeholder="Entrez votre pseudo…"
-              className="w-full bg-surface-container-high border border-white/10 rounded-xl px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all mb-8"
-            />
-            <div className="flex gap-3">
+            {user && (
+              <>
+                <label className="block text-xs text-on-surface-variant font-semibold uppercase tracking-wider mb-2">
+                  Pseudo
+                </label>
+                <input
+                  autoFocus
+                  value={pseudo}
+                  onChange={(e) => setPseudo(e.target.value)}
+                  placeholder="Entrez votre pseudo…"
+                  className="w-full bg-surface-container-high border border-white/10 rounded-xl px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all mb-3"
+                />
+              </>
+            )}
+            {profileError && (
+              <p className="text-xs text-red-400 mb-3">{profileError}</p>
+            )}
+            <div className="flex gap-3 mt-3">
               <button
                 onClick={handleCancel}
                 disabled={saving}

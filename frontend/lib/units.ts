@@ -101,6 +101,26 @@ export function fmtPressure(hpa: number, unit: PressureUnit): { value: string; l
  * @param unit - Unité cible.
  * @returns Objet { value, label } prêt à l'affichage.
  */
+export function fmtVis(meters: number, unit: VisUnit): { value: string; label: string } {
+  switch (unit) {
+    case "mi": return { value: `${(meters / 1609.34).toFixed(1)}`, label: "mi" };
+    default:   return { value: `${(meters / 1000).toFixed(1)}`,    label: "km" };
+  }
+}
+
+/**
+ * Convertit une hauteur de précipitations depuis des millimètres vers l'unité cible.
+ *
+ * @param mm - Précipitations en millimètres (valeur brute OWM).
+ * @param unit - Unité cible.
+ * @returns Objet { value, label } prêt à l'affichage.
+ */
+export function fmtPrecip(mm: number, unit: PrecipUnit): { value: string; label: string } {
+  switch (unit) {
+    case "in": return { value: `${(mm * 0.03937).toFixed(2)}`, label: "in" };
+    default:   return { value: `${mm.toFixed(1)}`,             label: "mm" };
+  }
+}
 
 /**
  * Formate un timestamp Unix en chaîne de date selon le format choisi.
@@ -109,20 +129,6 @@ export function fmtPressure(hpa: number, unit: PressureUnit): { value: string; l
  * @param format - Format de date cible.
  * @returns Chaîne de date formatée (ex. "25/03/2026").
  */
-export function fmtVis(meters: number, unit: VisUnit): { value: string; label: string } {
-  switch (unit) {
-    case "mi": return { value: `${(meters / 1609.34).toFixed(1)}`, label: "mi" };
-    default:   return { value: `${(meters / 1000).toFixed(1)}`,    label: "km" };
-  }
-}
-
-export function fmtPrecip(mm: number, unit: PrecipUnit): { value: string; label: string } {
-  switch (unit) {
-    case "in": return { value: `${(mm * 0.03937).toFixed(2)}`, label: "in" };
-    default:   return { value: `${mm.toFixed(1)}`,             label: "mm" };
-  }
-}
-
 export function fmtDate(ts: number, format: DateFormat): string {
   const d    = new Date(ts * 1000);
   const dd   = String(d.getDate()).padStart(2, "0");
@@ -132,5 +138,44 @@ export function fmtDate(ts: number, format: DateFormat): string {
     case "DD/MM/YYYY": return `${dd}/${mm}/${yyyy}`;
     case "MM/DD/YYYY": return `${mm}/${dd}/${yyyy}`;
     case "YYYY-MM-DD": return `${yyyy}-${mm}-${dd}`;
+  }
+}
+
+/** Retourne `value` si elle fait partie des valeurs autorisées, sinon `fallback`. */
+function pick<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
+  return allowed.includes(value as T) ? (value as T) : fallback;
+}
+
+/**
+ * Sérialise les préférences d'unités en chaîne JSON pour la persistance backend.
+ *
+ * @param units - Préférences d'unités à sérialiser.
+ * @returns Chaîne JSON compacte.
+ */
+export function serializeUnits(units: Units): string {
+  return JSON.stringify(units);
+}
+
+/**
+ * Reconstruit des préférences d'unités depuis leur forme persistée.
+ * Tolère les valeurs absentes, partielles ou invalides en retombant sur les défauts.
+ *
+ * @param raw - Chaîne JSON issue du backend (champ unit_system).
+ * @returns Préférences d'unités complètes et valides.
+ */
+export function parseUnits(raw: string): Units {
+  try {
+    const p = JSON.parse(raw) as Record<string, unknown>;
+    return {
+      temp:     pick(p.temp,     ["C", "F", "K"] as const,                          DEFAULT_UNITS.temp),
+      wind:     pick(p.wind,     ["kmh", "mph", "ms", "kt"] as const,                DEFAULT_UNITS.wind),
+      pressure: pick(p.pressure, ["hPa", "mbar", "inHg", "mmHg"] as const,           DEFAULT_UNITS.pressure),
+      precip:   pick(p.precip,   ["mm", "in"] as const,                              DEFAULT_UNITS.precip),
+      vis:      pick(p.vis,      ["km", "mi"] as const,                              DEFAULT_UNITS.vis),
+      time:     pick(p.time,     ["24h", "12h"] as const,                            DEFAULT_UNITS.time),
+      date:     pick(p.date,     ["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"] as const, DEFAULT_UNITS.date),
+    };
+  } catch {
+    return DEFAULT_UNITS;
   }
 }
