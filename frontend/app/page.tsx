@@ -778,12 +778,21 @@ export default function HomePage() {
                   <div
                     key={`${fav.lat},${fav.lon}`}
                     draggable
-                    onDragStart={() => setDraggedFav(i)}
-                    onDragOver={(e) => { e.preventDefault(); setDragOverFav(i); }}
-                    onDrop={() => handleDropFav(i)}
+                    onDragStart={(e) => {
+                      // dataTransfer obligatoire pour que le drag démarre réellement (Firefox notamment)
+                      e.dataTransfer.setData("text/plain", String(i));
+                      e.dataTransfer.effectAllowed = "move";
+                      setDraggedFav(i);
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      setDragOverFav(i);
+                    }}
+                    onDrop={(e) => { e.preventDefault(); handleDropFav(i); }}
                     onDragEnd={() => { setDraggedFav(null); setDragOverFav(null); }}
                     onClick={() => searchByCoords(fav.lat, fav.lon, fav.city)}
-                    className={`bg-surface-container/40 backdrop-blur-2xl border rounded-3xl p-5 flex items-center justify-between transition-all cursor-grab active:cursor-grabbing ${
+                    className={`bg-surface-container/40 backdrop-blur-2xl border rounded-3xl p-5 flex items-center justify-between gap-3 transition-all cursor-grab active:cursor-grabbing select-none ${
                       draggedFav === i
                         ? "opacity-40 border-white/5"
                         : dragOverFav === i
@@ -791,16 +800,17 @@ export default function HomePage() {
                         : "border-white/5 hover:scale-[1.02]"
                     }`}
                   >
-                    <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 rounded-2xl ${fav.bgColor} flex items-center justify-center`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="material-symbols-outlined text-on-surface-variant/40 text-xl flex-shrink-0">drag_indicator</span>
+                      <div className={`w-12 h-12 rounded-2xl ${fav.bgColor} flex items-center justify-center flex-shrink-0`}>
                         <span className="material-symbols-outlined" style={{ color: fColor }}>{fIcon}</span>
                       </div>
-                      <div>
-                        <h4 className="font-bold">{fav.city}</h4>
-                        <p className="text-xs text-on-surface-variant capitalize">{fCond}</p>
+                      <div className="min-w-0">
+                        <h4 className="font-bold truncate">{fav.city}</h4>
+                        <p className="text-xs text-on-surface-variant capitalize truncate">{fCond}</p>
                       </div>
                     </div>
-                    <span className="text-2xl font-black">{d ? `${fmtTempVal(d.temp, units.temp)}°` : "—"}</span>
+                    <span className="text-2xl font-black flex-shrink-0">{d ? `${fmtTempVal(d.temp, units.temp)}°` : "—"}</span>
                   </div>
                 );
               })}
