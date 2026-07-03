@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     # Environnement
     environment: str = "development"
 
+    # Documentation interactive OpenAPI (Swagger /docs, /redoc, /openapi.json).
+    # Désactivée par défaut par sécurité : à n'activer qu'en dev (ENABLE_DOCS=true).
+    # Évite d'exposer le schéma complet de l'API en production.
+    enable_docs: bool = False
+
     # OpenWeatherMap
     owm_api_key: str = ""
     cache_ttl_seconds: int = 600  # 10 minutes
