@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
@@ -44,16 +45,17 @@ const themeInitScript = `(function(){try{
   else r.removeAttribute('data-light');
 }catch(e){}})();`;
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html lang="fr" className="dark" suppressHydrationWarning>
       <head>
         {/* Applique le thème depuis localStorage avant le premier rendu — évite le flash */}
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         {/*
           Police d'icônes Material Symbols — chargée globalement via <link> dans le <head>
           du layout racine (équivalent App Router de _document, donc valable sur toutes les pages).

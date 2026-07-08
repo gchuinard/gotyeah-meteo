@@ -832,7 +832,7 @@ export default function HomePage() {
                   <h3 className="text-xl font-bold tracking-tight">{tr.hourlyForecast}</h3>
                   <button className="text-sm text-primary font-medium hover:underline">{tr.seeDetailedMap}</button>
                 </div>
-                <div className="flex gap-4 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
+                <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
                   {hourly.map((h, i) => {
                     const hIcon  = getWeatherIcon(h.weather[0].icon);
                     const hColor = getWeatherColor(h.weather[0].icon);

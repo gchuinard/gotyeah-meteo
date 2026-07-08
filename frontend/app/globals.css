@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Masque la scrollbar sans attribut style inline (compatibilité CSP style-src sans unsafe-inline) */
+@layer utilities {
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @layer base {
   :root {
     /* ── WeatherNow theme tokens (RGB triplets for Tailwind opacity support) ── */

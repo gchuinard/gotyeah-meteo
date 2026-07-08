@@ -182,7 +182,7 @@ export function SideNav({ units, onUnitsChange, onOpenLogin, onOpenRegister }: P
         <div className="mx-6 my-4 border-t border-white/5 flex-shrink-0" />
 
         {/* Preferences — scrollable */}
-        <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-5" style={{ scrollbarWidth: "none" }}>
+        <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-5 no-scrollbar">
           <p className="text-xs font-bold text-on-surface uppercase tracking-widest">Unités</p>
 
           <UnitGroup<TempUnit>
