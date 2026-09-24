@@ -1,7 +1,12 @@
 services:
   weathernow-db:
+    # Limite posee le 28/08/2026, sur trois fois la consommation observee.
+    # Elle etait deja appliquee a chaud par docker update ; elle est ecrite ici
+    # pour survivre a une recreation du conteneur.
+    mem_limit: 128m
     image: postgres:16-alpine
     container_name: weathernow-db
+    restart: unless-stopped
     expose:
       - "5432"
     environment:
@@ -19,10 +24,15 @@ services:
       - weathernow-net
 
   weathernow-api:
+    # Limite posee le 28/08/2026 a 128m, relevee a 256m le 24/09/2026 : le pic
+    # mesure depuis la recreation atteignait deja les 128m. Elle est ecrite ici
+    # pour survivre a une recreation du conteneur.
+    mem_limit: 256m
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: weathernow-api
+    restart: unless-stopped
     expose:
       - "8000"
     env_file:
@@ -40,12 +50,17 @@ services:
       - weathernow-net
 
   weathernow-front:
+    # Limite posee le 28/08/2026, sur trois fois la consommation observee.
+    # Elle etait deja appliquee a chaud par docker update ; elle est ecrite ici
+    # pour survivre a une recreation du conteneur.
+    mem_limit: 512m
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     container_name: weathernow-front
+    restart: unless-stopped
     expose:
       - "3000"
     environment:
