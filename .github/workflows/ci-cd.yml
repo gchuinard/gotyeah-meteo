@@ -77,12 +77,17 @@ jobs:
     needs: [backend, frontend]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
-      - name: Vérifier que l'empreinte du Pi est configurée
+      - name: Vérifier que l'empreinte du Pi et la clé de déploiement sont configurées
         env:
           SSH_HOST_FINGERPRINT: ${{ secrets.SSH_HOST_FINGERPRINT }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
           if [ -z "$SSH_HOST_FINGERPRINT" ]; then
             echo "::error::Secret SSH_HOST_FINGERPRINT absent : sans lui, le déploiement accepterait n'importe quel hôte."
+            exit 1
+          fi
+          if [ -z "$DEPLOY_SSH_KEY" ]; then
+            echo "::error::Secret DEPLOY_SSH_KEY absent."
             exit 1
           fi
       - name: Déployer sur le Raspberry Pi via SSH
@@ -90,17 +95,14 @@ jobs:
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
+          # Clé dédiée à Météo depuis le 25/09/2026. Sur le Pi, authorized_keys la force sur
+          # « /usr/local/sbin/gotyeah-deploy meteo » : git pull de main puis deploy/pi-deploy.sh.
+          # Elle ne peut rien faire d'autre. SSH_KEY reste celle de l'étape Allure.
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: 22
           # Empreinte SHA256 de la clé d'hôte ECDSA du Pi (celle que négocie l'action), depuis le
           # 24/09/2026. Sans elle, l'action accepte n'importe quel hôte : l'étape précédente refuse
           # donc de continuer si le secret est vide.
           fingerprint: ${{ secrets.SSH_HOST_FINGERPRINT }}
-          script: |
-            # Arret a la premiere erreur : un git pull refuse laissait le script
-            # reconstruire l'ancien code et finir en succes.
-            set -e
-            cd /home/pi/sites/gotyeah-meteo
-            git pull --ff-only origin main
-            # --wait : la commande échoue (et le job CI aussi) si un conteneur ne devient pas sain
-            docker compose -f docker-compose.yml --env-file .env up -d --build --force-recreate --wait
+          # Ignorée par le Pi (commande forcée) : les étapes vivent dans deploy/pi-deploy.sh.
+          script: deploy
