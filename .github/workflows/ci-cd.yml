@@ -97,7 +97,10 @@ jobs:
           # donc de continuer si le secret est vide.
           fingerprint: ${{ secrets.SSH_HOST_FINGERPRINT }}
           script: |
+            # Arret a la premiere erreur : un git pull refuse laissait le script
+            # reconstruire l'ancien code et finir en succes.
+            set -e
             cd /home/pi/sites/gotyeah-meteo
-            git pull
+            git pull --ff-only origin main
             # --wait : la commande échoue (et le job CI aussi) si un conteneur ne devient pas sain
             docker compose -f docker-compose.yml --env-file .env up -d --build --force-recreate --wait
