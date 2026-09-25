@@ -65,6 +65,19 @@ services:
       - "3000"
     environment:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      # Le serveur autonome de Next ecoute sur HOSTNAME, que Docker remplit avec
+      # le nom du conteneur : il n'ecoutait donc que sur l'IP du reseau, pas sur
+      # 127.0.0.1. 0.0.0.0 le rend joignable par la sonde, NPM passe toujours
+      # par le nom du conteneur.
+      - HOSTNAME=0.0.0.0
+    # Sonde de sante : la page d'accueil est un composant client, la rendre ne
+    # declenche aucun appel a l'API meteo. 127.0.0.1 et non localhost (::1).
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "-T", "5", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
       - weathernow-api
     networks:
